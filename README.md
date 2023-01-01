@@ -25,5 +25,5 @@ Please create a databaes called `ftibois` and run the script `resources/fitbois.
 
 * Error handling
 * Individual stat commands
-* Dockerize 
+* Dockerize and automate deployment
 * Clean up
