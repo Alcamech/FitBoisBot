@@ -11,10 +11,10 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
@@ -53,37 +53,22 @@ public class FitBoisBot extends TelegramLongPollingBot {
         Long chatId = msg.getChat().getId();
 
         if (msg.hasPhoto() && msg.getCaption() != null) {
-            String activityContent = msg.getCaption();
+            String msgCaption = msg.getCaption();
 
-            String[] parsedActivityContent = activityContent.split("-");
+            Map<String, String> captionContents = parseMessageCaption(msgCaption, chatId);
 
-            String name = "", activity = "";
-
-            try {
-                name = parsedActivityContent[0];
-                activity = parsedActivityContent[1];
-            } catch (Exception e) {
-                sendText(chatId, "Something went wrong. Check your message formatting.");
-            }
-
-            String month = "", day = "", year = "";
-
-            if (parsedActivityContent.length == 5) { //name-activity-mm-dd-yyyy
-                month = parsedActivityContent[2];
-                day = parsedActivityContent[3];
-                year = parsedActivityContent[4];
-            } else  { // name-activity-MMddyyyy
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMddyyyy", Locale.ENGLISH);
-                LocalDate date = LocalDate.parse(parsedActivityContent[2], formatter);
-                String[] parsedDate = date.toString().split("-");
-
-                month = parsedDate[1];
-                day = parsedDate[2];
-                year = parsedDate[0];
-            }
+            String name = captionContents.get("name");
+            String activity = captionContents.get("activity");
+            String month = captionContents.get("month");
+            String day =  captionContents.get("day");
+            String year = captionContents.get("year");
 
             FitBoisController controller = new FitBoisController(fitBoisRepository);
             controller.addNewRecord(name, activity, month, day, year);
+
+            //TODO: FitBoisRecord needs to support telegram username, id, and groupId
+            //TODO: Before posting activity counts make sure the fetched users belong in that
+            //TODO: particular group.
 
             List<String> names = controller.getFitBois();
             HashMap<String, Long> counts = new HashMap<>();
@@ -99,6 +84,7 @@ public class FitBoisBot extends TelegramLongPollingBot {
                     .map(e -> e.getKey() + "=" + e.getValue())
                     .collect(Collectors.joining(", "));
 
+            sendfastestGGInTheWest(chatId);
             String totalActivitiesMessage = "Activity counts updated: " + content;
             sendText(chatId, totalActivitiesMessage);
         }
@@ -135,5 +121,61 @@ public class FitBoisBot extends TelegramLongPollingBot {
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+    * Sends "Fastest gg in the west" so Ian can never be the fastest anymore
+    */
+    public void sendfastestGGInTheWest(Long chatId) {
+        String fastestGG = "Fastest gg in the west";
+        sendText(chatId, "gg");
+        sendText(chatId, fastestGG);
+    }
+
+    /**
+    * Parse the caption attached to the photo message that represents an activity
+    * The format should be either name-activity-mm-dd-yyyy or name-activity-MMddyyyy
+    *
+    * @param msgCaption caption attached to the message
+    * @param chatId the chatId for the telegram group
+    * @return a map containing name, activity, day, month, year
+    */
+    public Map<String, String> parseMessageCaption(String msgCaption, Long chatId) {
+        Map<String, String> parsedMessageContent = new HashMap<>();
+
+        String[] splitCaption = msgCaption.split("-");
+
+        String name = "", activity = "";
+
+        try {
+            name = splitCaption[0];
+            activity = splitCaption[1];
+        } catch (Exception e) {
+            sendText(chatId, "Something went wrong. Check your message formatting.");
+        }
+
+        String month = "", day = "", year = "";
+
+        if (splitCaption.length == 5) { //name-activity-mm-dd-yyyy
+            month = splitCaption[2];
+            day = splitCaption[3];
+            year = splitCaption[4];
+        } else  { // name-activity-MMddyyyy
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMddyyyy", Locale.ENGLISH);
+            LocalDate date = LocalDate.parse(splitCaption[2], formatter);
+            String[] parsedDate = date.toString().split("-");
+
+            month = parsedDate[1];
+            day = parsedDate[2];
+            year = parsedDate[0];
+        }
+
+        parsedMessageContent.put("name", name);
+        parsedMessageContent.put("activity", activity);
+        parsedMessageContent.put("day", day);
+        parsedMessageContent.put("month", month);
+        parsedMessageContent.put("year", year);
+
+        return parsedMessageContent;
     }
 }

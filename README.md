@@ -10,6 +10,12 @@
 
 To fetch dependencies `mvn clean install`
 
+## Contributing
+
+`dev.properties` file needed
+
+FitBoisDevBot is used as a test, dev, and stage environment.
+
 ## Build, Run, Test
 
 `dev.properties` file needed
@@ -23,7 +29,9 @@ Please create a databaes called `ftibois` and run the script `resources/fitbois.
 
 ## TODO
 
+* see TODOs in code
 * Error handling
 * Individual stat commands
 * Dockerize and automate deployment
 * Clean up
+* Write test
