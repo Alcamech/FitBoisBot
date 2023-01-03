@@ -33,5 +33,5 @@ Please create a databaes called `ftibois` and run the script `resources/fitbois.
 * Error handling
 * Individual stat commands
 * Dockerize and automate deployment
-* Clean up
 * Write test
+* Create Changelog
