@@ -31,7 +31,31 @@ Please create a databaes called `ftibois` and run the script `resources/fitbois.
 
 * see TODOs in code
 * Error handling
-* Individual stat commands
 * Dockerize and automate deployment
 * Write test
 * Create Changelog
+
+# Planned Features
+
+### Bot command to show individual stats
+
+`/stats` - should show the individual their personal stats that are being tracked
+
+* Activity count
+* count by month
+* count by activity type
+* fastest gg count
+
+### Bot command to show individual "fastest gg" count
+
+`/fastgg` - should show everyone's count of "fastest gg"
+
+### Bot command to submit challenge completion [draft]
+
+`/challenge` - should allow you to submit a challenge
+
+first optional parameter is `1=complete`
+
+second parameter is wager amount 
+
+message should be in the format of `/challenge 1 100`
