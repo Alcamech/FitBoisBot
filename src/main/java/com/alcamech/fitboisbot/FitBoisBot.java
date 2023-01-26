@@ -165,9 +165,10 @@ public class FitBoisBot extends TelegramLongPollingBot {
         }
 
         // message is from activity poster
+        /*
         if (msg.getFrom().getId().equals(lastActivityPostUserId)) {
            return;
-        }
+        }*/
 
         if (isGG(msg.getText())) {
             userRepository.updateGgCount(user.getId(), user.getGroupId());
@@ -314,6 +315,7 @@ public class FitBoisBot extends TelegramLongPollingBot {
 
         String content = counts.entrySet()
                 .stream()
+                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
                 .map(e -> e.getKey() + "=" + e.getValue())
                 .collect(Collectors.joining(", "));
 
