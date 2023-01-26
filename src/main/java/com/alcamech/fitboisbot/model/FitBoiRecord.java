@@ -1,4 +1,4 @@
-package com.alcamech.fitboisbot;
+package com.alcamech.fitboisbot.model;
 
 import javax.persistence.*;
 

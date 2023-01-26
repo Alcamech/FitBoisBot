@@ -30,6 +30,9 @@ Please create a databaes called `ftibois` and run the script `resources/fitbois.
 ## TODO
 
 * see TODOs in code
+* Break out methods 
+* document `/fastgg`
+* improve formatting of bot messages
 * Error handling
 * Dockerize and automate deployment
 * Write test
@@ -45,10 +48,6 @@ Please create a databaes called `ftibois` and run the script `resources/fitbois.
 * count by month
 * count by activity type
 * fastest gg count
-
-### Bot command to show individual "fastest gg" count
-
-`/fastgg` - should show everyone's count of "fastest gg"
 
 ### Bot command to submit challenge completion [draft]
 

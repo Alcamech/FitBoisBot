@@ -1,5 +1,9 @@
 package com.alcamech.fitboisbot;
 
+import com.alcamech.fitboisbot.model.FitBoiRecord;
+import com.alcamech.fitboisbot.model.FitBoiUser;
+import com.alcamech.fitboisbot.respository.FitBoisRepository;
+import com.alcamech.fitboisbot.respository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -7,6 +11,7 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.time.LocalDate;
@@ -19,7 +24,8 @@ public class FitBoisBot extends TelegramLongPollingBot {
 
     @Autowired
     FitBoisRepository fitBoisRepository;
-
+    @Autowired
+    UserRepository userRepository;
     @Value("${token}")
     private String token;
 
@@ -54,49 +60,28 @@ public class FitBoisBot extends TelegramLongPollingBot {
             }
         }
 
+        FitBoiUser user = getUserFromMessage(msg);
         Long chatId = msg.getChat().getId();
 
-        isFastestGG(update, msg, chatId);
+        isFastestGG(update, msg, chatId, user);
 
         if (msg.hasPhoto() && msg.getCaption() != null) {
             String msgCaption = msg.getCaption();
 
             Map<String, String> captionContents = parseMessageCaption(msgCaption, chatId);
+            getRecordFromCaption(captionContents);
 
-            String name = captionContents.get("name");
-            String activity = captionContents.get("activity");
-            String month = captionContents.get("month");
-            String day =  captionContents.get("day");
-            String year = captionContents.get("year");
-
-            FitBoisController controller = new FitBoisController(fitBoisRepository);
-            controller.addNewRecord(name, activity, month, day, year);
-
-            //TODO: FitBoisRecord needs to support telegram first name, username, id, and groupId
-            //TODO: Before posting activity counts make sure the fetched users belong in that
-            //TODO: particular group.
-
-            List<String> names = controller.getFitBois();
-            HashMap<String, Long> counts = new HashMap<>();
-
-            for (String retrievedName : names) {
-                Long countOfRecords = controller.getCountByName(retrievedName);
-
-                counts.put(retrievedName, countOfRecords);
-            }
-
-            String content = counts.entrySet()
-                    .stream()
-                    .map(e -> e.getKey() + "=" + e.getValue())
-                    .collect(Collectors.joining(", "));
-
-            String totalActivitiesMessage = "Activity counts updated: " + content;
+            String totalActivitiesMessage = getActivityCountsMessage();
             sendText(chatId, totalActivitiesMessage);
         }
 
         if (msg.isCommand()) {
             if (msg.getText().equals(Commands.HELP.toString())) {
                 onHelp(chatId);
+            }
+
+            if (msg.getText().equals(Commands.FASTGG.toString())) {
+                onFastGG(chatId);
             }
         }
     }
@@ -106,8 +91,18 @@ public class FitBoisBot extends TelegramLongPollingBot {
     *
     * @param chatId chat id to send response to
     */
-    public void onHelp(Long chatId ) {
+    public void onHelp(Long chatId) {
         String message = "Nothing to see here... yet";
+        sendText(chatId, message);
+    }
+
+    /**
+    * Response for the /fastgg command
+    *
+    * @param chatId chat id to send response to
+    */
+    public void onFastGG(Long chatId) {
+        String message = getFastestGgCountsMessage(chatId);
         sendText(chatId, message);
     }
 
@@ -150,13 +145,14 @@ public class FitBoisBot extends TelegramLongPollingBot {
 
     /**
     * Determines if the message is the fastest gg. We only want to reply to the
-    * first gg after the last activity post.
+    * first gg after the last activity post. If the message is the fastest gg
+    * update the count in the database.
     *
     * @param update update
     * @param msg message
     * @param chatId chat id
     */
-    public void isFastestGG(Update update, Message msg, Long chatId) {
+    public void isFastestGG(Update update, Message msg, Long chatId, FitBoiUser user) {
         String fastestGG = "Fastest gg in the west";
         // fastest GG is not available;
         if (!isFastestGGAvailable) {
@@ -174,6 +170,7 @@ public class FitBoisBot extends TelegramLongPollingBot {
         }
 
         if (isGG(msg.getText())) {
+            userRepository.updateGgCount(user.getId(), user.getGroupId());
             sendTextAsReply(chatId, fastestGG, msg.getMessageId());
             isFastestGGAvailable = false;
         }
@@ -234,5 +231,92 @@ public class FitBoisBot extends TelegramLongPollingBot {
         parsedMessageContent.put("year", year);
 
         return parsedMessageContent;
+    }
+
+    /**
+    * Gets the user associated with the message. If the user does not exist in
+    * the database create a new user.
+    *
+    * @param msg the message
+    * @return the user
+    */
+    public FitBoiUser getUserFromMessage(Message msg) {
+        User user = msg.getFrom();
+
+        Optional<FitBoiUser> fitBoiUser = userRepository.findById(user.getId());
+
+        if (fitBoiUser.isPresent()) {
+           return fitBoiUser.get();
+        } else {
+            FitBoiUser newFitBoiUser = new FitBoiUser(user.getId(), user.getFirstName(), msg.getChatId());
+            userRepository.save(newFitBoiUser);
+            userRepository.initializeGgCount(user.getId(), msg.getChatId());
+
+            return newFitBoiUser;
+        }
+    }
+
+    /**
+    * Gets the FitBoi record from the message caption. Save the record in the
+    * database.
+    *
+    * @param captionContents parsed caption from the message
+    * @return the FitBoi record
+    */
+    public FitBoiRecord getRecordFromCaption(Map<String, String> captionContents) {
+        String name = captionContents.get("name");
+        String activity = captionContents.get("activity");
+        String month = captionContents.get("month");
+        String day =  captionContents.get("day");
+        String year = captionContents.get("year");
+
+        FitBoiRecord newFitBoiRecord = new FitBoiRecord(name, activity, month, day, year);
+        fitBoisRepository.save(newFitBoiRecord);
+
+        return newFitBoiRecord;
+    }
+
+    /**
+    * Using distinct names from the fit_boi_record table build an activity
+    * counts message
+    *
+    * @return a message display activity counts
+    */
+    public String getActivityCountsMessage() {
+        //TODO: Before returning activity counts make sure the fetched users belong in that
+        //TODO: particular group.
+        List<String> names = fitBoisRepository.findDistinctName();
+        HashMap<String, Long> counts = new HashMap<>();
+
+        for (String retrievedName : names) {
+            Long countOfRecords = fitBoisRepository.countByName(retrievedName);
+
+            counts.put(retrievedName, countOfRecords);
+        }
+
+        String content = counts.entrySet()
+                .stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining(", "));
+
+        return "Activity counts updated: " + content;
+    }
+
+    public String getFastestGgCountsMessage(Long chatId) {
+        List<FitBoiUser> users = userRepository.findFitBoiUsersByGroupId(chatId);
+        HashMap<String, Integer> counts = new HashMap<>();
+
+        for (FitBoiUser user : users) {
+            int ggCount = userRepository.fetchFastGgCountById(user.getId());
+
+            counts.put(user.getName(), ggCount);
+        }
+
+        String content = counts.entrySet()
+                .stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .collect(Collectors.joining(", "));
+
+        return "Fastest GGs \uD83D\uDE0E " + content;
     }
 }

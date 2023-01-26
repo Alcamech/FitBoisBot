@@ -1,7 +1,8 @@
 package com.alcamech.fitboisbot;
 
 public enum Commands {
-    HELP("/help");
+    HELP("/help"),
+    FASTGG("/fastgg");
 
     private final String text;
 
