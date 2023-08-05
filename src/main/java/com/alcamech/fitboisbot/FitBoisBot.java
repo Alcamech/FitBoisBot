@@ -4,6 +4,8 @@ import com.alcamech.fitboisbot.model.FitBoiRecord;
 import com.alcamech.fitboisbot.model.FitBoiUser;
 import com.alcamech.fitboisbot.respository.FitBoisRepository;
 import com.alcamech.fitboisbot.respository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -19,8 +21,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.alcamech.fitboisbot.Constants.*;
+
 @Component
 public class FitBoisBot extends TelegramLongPollingBot {
+    private static final Logger logger = LoggerFactory.getLogger(FitBoisBot.class);
 
     @Autowired
     FitBoisRepository fitBoisRepository;
@@ -45,46 +50,61 @@ public class FitBoisBot extends TelegramLongPollingBot {
     private Long lastActivityPostUserId;
     private boolean isFastestGGAvailable;
 
+
     @Override
     public void onUpdateReceived(Update update) {
-        //TODO: clean this method up, break it up, add better error handling
-        Message msg;
-        if (update.getEditedMessage() != null) {
-            msg = update.getEditedMessage();
-        } else {
-            msg = update.getMessage();
+        try {
+            Message msg = getMessageFromUpdate(update);
+            FitBoiUser user = getUserFromMessage(msg);
+            Long chatId = msg.getChat().getId();
 
-            if (msg.hasPhoto()) { // photo post is potentially an activity
+            isFastestGG(update, msg, chatId, user);
+
+            if (msg.hasPhoto())
+                handlePhotoMessage(msg, chatId);
+
+            if (msg.isCommand())
+                handleCommandMessage(msg, chatId);
+
+        } catch (Exception e) {
+            logger.error("An error occurred in onUpdateReceived method: ", e);
+        }
+    }
+
+    private Message getMessageFromUpdate(Update update) {
+        if (update.getEditedMessage() != null) {
+            return update.getEditedMessage();
+        } else {
+            Message msg = update.getMessage();
+            if (msg.hasPhoto()) {
                 lastActivityPostUserId = msg.getFrom().getId();
                 isFastestGGAvailable = true;
             }
+            return msg;
         }
+    }
 
-        FitBoiUser user = getUserFromMessage(msg);
-        Long chatId = msg.getChat().getId();
-
-        isFastestGG(update, msg, chatId, user);
-
-        if (msg.hasPhoto() && msg.getCaption() != null) {
+    private void handlePhotoMessage(Message msg, Long chatId) {
+        if (msg.getCaption() != null) {
             String msgCaption = msg.getCaption();
-
             Map<String, String> captionContents = parseMessageCaption(msgCaption, chatId);
             getRecordFromCaption(captionContents);
 
             String totalActivitiesMessage = getActivityCountsMessage();
             sendText(chatId, totalActivitiesMessage);
         }
+    }
 
-        if (msg.isCommand()) {
-            if (msg.getText().equals(Commands.HELP.toString())) {
-                onHelp(chatId);
-            }
-
-            if (msg.getText().equals(Commands.FASTGG.toString())) {
-                onFastGG(chatId);
-            }
+    private void handleCommandMessage(Message msg, Long chatId) {
+        String commandText = msg.getText();
+        if (commandText.equals(Commands.HELP.toString())) {
+            onHelp(chatId);
+        }
+        if (commandText.equals(Commands.FASTGG.toString())) {
+            onFastGG(chatId);
         }
     }
+
 
     /**
     * Response for the /help command
@@ -154,7 +174,6 @@ public class FitBoisBot extends TelegramLongPollingBot {
     */
     public void isFastestGG(Update update, Message msg, Long chatId, FitBoiUser user) {
         String fastestGG = "Fastest gg in the west";
-        // fastest GG is not available;
         if (!isFastestGGAvailable) {
             return;
         }
@@ -163,12 +182,6 @@ public class FitBoisBot extends TelegramLongPollingBot {
         if (update.getEditedMessage() != null && update.getEditedMessage().getFrom().getId().equals(lastActivityPostUserId)) {
             return;
         }
-
-        // message is from activity poster
-        /*
-        if (msg.getFrom().getId().equals(lastActivityPostUserId)) {
-           return;
-        }*/
 
         if (isGG(msg.getText())) {
             userRepository.updateGgCount(user.getId(), user.getGroupId());
@@ -188,41 +201,43 @@ public class FitBoisBot extends TelegramLongPollingBot {
     }
 
     /**
-    * Parse the caption attached to the photo message that represents an activity
-    * The format should be either name-activity-mm-dd-yyyy or name-activity-MMddyyyy
-    *
-    * @param msgCaption caption attached to the message
-    * @param chatId the chatId for the telegram group
-    * @return a map containing name, activity, day, month, year
-    */
+     * Parse the caption attached to the photo message that represents an activity
+     * The format should be either name-activity-mm-dd-yyyy or name-activity-MMddyyyy
+     *
+     * @param msgCaption caption attached to the message
+     * @param chatId the chatId for the telegram group
+     * @return a map containing name, activity, day, month, year
+     */
     public Map<String, String> parseMessageCaption(String msgCaption, Long chatId) {
         Map<String, String> parsedMessageContent = new HashMap<>();
+        String[] splitCaption = msgCaption.split(DATE_SPLIT_FORMAT);
 
-        String[] splitCaption = msgCaption.split("-");
-
-        String name = "", activity = "";
-
-        try {
-            name = splitCaption[0];
-            activity = splitCaption[1];
-        } catch (Exception e) {
-            sendText(chatId, "Something went wrong. Check your message formatting.");
+        System.out.println(Arrays.toString(splitCaption));
+        if (splitCaption.length < 3) {
+            sendText(chatId, "Invalid message format. Please follow the name-activity-mm-dd-yyyy or name-activity-MMddyyyy format.");
         }
 
-        String month = "", day = "", year = "";
+        String name = splitCaption[0];
+        String activity = splitCaption[1];
+
+        String month, day, year;
 
         if (splitCaption.length == 5) { //name-activity-mm-dd-yyyy
             month = splitCaption[2];
             day = splitCaption[3];
             year = splitCaption[4];
-        } else  { // name-activity-MMddyyyy
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMddyyyy", Locale.ENGLISH);
-            LocalDate date = LocalDate.parse(splitCaption[2], formatter);
-            String[] parsedDate = date.toString().split("-");
+        } else { // name-activity-MMddyyyy
+            if (splitCaption[2].length() != 8) {
+                sendText(chatId, "Invalid message format. Please follow the name-activity-mm-dd-yyyy or name-activity-MMddyyyy format.");
+            }
 
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(DATE_FORMAT, Locale.ENGLISH);
+            LocalDate date = LocalDate.parse(splitCaption[2], formatter);
+            String[] parsedDate = date.toString().split(DATE_SEPARATOR);
+
+            year = parsedDate[0];
             month = parsedDate[1];
             day = parsedDate[2];
-            year = parsedDate[0];
         }
 
         parsedMessageContent.put("name", name);
@@ -258,13 +273,12 @@ public class FitBoisBot extends TelegramLongPollingBot {
     }
 
     /**
-    * Gets the FitBoi record from the message caption. Save the record in the
-    * database.
-    *
-    * @param captionContents parsed caption from the message
-    * @return the FitBoi record
-    */
-    public FitBoiRecord getRecordFromCaption(Map<String, String> captionContents) {
+     * Gets the FitBoi record from the message caption. Save the record in the
+     * database.
+     *
+     * @param captionContents parsed caption from the message
+     */
+    public void getRecordFromCaption(Map<String, String> captionContents) {
         String name = captionContents.get("name");
         String activity = captionContents.get("activity");
         String month = captionContents.get("month");
@@ -273,8 +287,6 @@ public class FitBoisBot extends TelegramLongPollingBot {
 
         FitBoiRecord newFitBoiRecord = new FitBoiRecord(name, activity, month, day, year);
         fitBoisRepository.save(newFitBoiRecord);
-
-        return newFitBoiRecord;
     }
 
     /**
