@@ -19,6 +19,7 @@ import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.time.LocalDate;
+import java.time.Year;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -291,6 +292,14 @@ public class FitBoisBot extends TelegramLongPollingBot {
         String day =  captionContents.get("day");
         String year = captionContents.get("year");
 
+        if (year != null && year.length() == 2) {
+            int yearInt = Integer.parseInt(year);
+            int currentYear = Year.now().getValue();
+            int currentYearLastTwoDigits = currentYear % 100;
+
+            year = String.valueOf((currentYearLastTwoDigits < yearInt) ? currentYear - currentYearLastTwoDigits - 100 + yearInt : currentYear - currentYearLastTwoDigits + yearInt);
+        }
+
         FitBoiRecord newFitBoiRecord = new FitBoiRecord(userId, activity, month, day, year);
         recordRepository.save(newFitBoiRecord);
     }
@@ -308,7 +317,7 @@ public class FitBoisBot extends TelegramLongPollingBot {
         HashMap<String, Long> counts = new HashMap<>();
 
         for (Long userId : userIds) {
-            Long countOfRecords = recordRepository.countByUserIdAndCurrentYear(userId);
+            Long countOfRecords = recordRepository.countByUserIdWithCurrentYearAndMonth(userId);
             String name = userRepository.findById(userId).get().getName();
 
             counts.put(name, countOfRecords);

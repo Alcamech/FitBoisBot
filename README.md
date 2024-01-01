@@ -41,6 +41,7 @@ Please create a databaes called `ftibois` and run the script `resources/fitbois.
 * Intelligent Q/A with SQL data 
 * Monthly Count
 * Monthly Check-Ins
+* Logging
 
 # Planned Features
 

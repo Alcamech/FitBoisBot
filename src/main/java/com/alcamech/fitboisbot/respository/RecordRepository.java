@@ -12,4 +12,7 @@ public interface RecordRepository extends CrudRepository<FitBoiRecord, Integer> 
 
     @Query("SELECT COUNT(*) FROM FitBoiRecord WHERE userId = :userId AND year = YEAR(CURDATE())")
     Long countByUserIdAndCurrentYear(Long userId);
+
+    @Query("SELECT COUNT(*) FROM FitBoiRecord WHERE userId = :userId AND year = YEAR(CURDATE()) AND month = MONTH(CURDATE())")
+    Long countByUserIdWithCurrentYearAndMonth(Long userId);
 }
