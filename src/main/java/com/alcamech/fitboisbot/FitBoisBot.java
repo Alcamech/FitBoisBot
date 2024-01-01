@@ -190,9 +190,9 @@ public class FitBoisBot extends TelegramLongPollingBot {
         }
 
         // update is an edit from activity poster
-        /*if (update.getEditedMessage() != null && update.getEditedMessage().getFrom().getId().equals(lastActivityPostUserId)) {
+        if (update.getEditedMessage() != null && update.getEditedMessage().getFrom().getId().equals(lastActivityPostUserId)) {
             return;
-        }*/
+        }
 
         if (isGG(msg.getText())) {
             ggRepository.updateGgCountForCurrentYear(user.getId(), user.getGroupId());
