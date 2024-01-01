@@ -36,6 +36,11 @@ Please create a databaes called `ftibois` and run the script `resources/fitbois.
 * Error handling
 * Write test
 * Create Changelog
+* Create Release Notes
+* Overview of 2023
+* Intelligent Q/A with SQL data 
+* Monthly Count
+* Monthly Check-Ins
 
 # Planned Features
 

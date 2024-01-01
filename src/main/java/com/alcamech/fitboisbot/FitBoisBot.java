@@ -63,6 +63,8 @@ public class FitBoisBot extends TelegramLongPollingBot {
         try {
             Message msg = getMessageFromUpdate(update);
             FitBoiUser user = getUserFromMessage(msg);
+            System.out.println("Message: " + msg);
+            System.out.println("User: " + user);
             Long chatId = msg.getChat().getId();
 
             isFastestGG(update, msg, chatId, user);
