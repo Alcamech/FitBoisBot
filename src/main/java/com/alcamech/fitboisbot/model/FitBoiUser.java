@@ -11,7 +11,6 @@ public class FitBoiUser {
     private Long id;
     private String name;
     private Long groupId;
-    private Integer fastGgCount;
     @Version
     private Integer version;
 
@@ -47,21 +46,12 @@ public class FitBoiUser {
         this.groupId = groupId;
     }
 
-    public Integer getFastGgCount() {
-        return fastGgCount;
-    }
-
-    public void setFastGgCount(Integer fastGgCount) {
-        this.fastGgCount = fastGgCount;
-    }
-
     @Override
     public String toString() {
         return "FitBoiUser{" +
                 "id=" + id +
                 ", name='" + name + '\'' +
                 ", groupId=" + groupId +
-                ", fastGgCount=" + fastGgCount +
                 ", version=" + version +
                 '}';
     }

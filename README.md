@@ -34,7 +34,6 @@ Please create a databaes called `ftibois` and run the script `resources/fitbois.
 * document `/fastgg`
 * improve formatting of bot messages
 * Error handling
-* Dockerize and automate deployment
 * Write test
 * Create Changelog
 

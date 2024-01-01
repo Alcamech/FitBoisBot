@@ -1,8 +1,10 @@
 package com.alcamech.fitboisbot;
 
+import com.alcamech.fitboisbot.model.FitBoiGg;
 import com.alcamech.fitboisbot.model.FitBoiRecord;
 import com.alcamech.fitboisbot.model.FitBoiUser;
-import com.alcamech.fitboisbot.respository.FitBoisRepository;
+import com.alcamech.fitboisbot.respository.RecordRepository;
+import com.alcamech.fitboisbot.respository.GgRepository;
 import com.alcamech.fitboisbot.respository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,9 +30,14 @@ public class FitBoisBot extends TelegramLongPollingBot {
     private static final Logger logger = LoggerFactory.getLogger(FitBoisBot.class);
 
     @Autowired
-    FitBoisRepository fitBoisRepository;
+    RecordRepository recordRepository;
+
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    GgRepository ggRepository;
+
     @Value("${token}")
     private String token;
 
@@ -87,8 +94,9 @@ public class FitBoisBot extends TelegramLongPollingBot {
     private void handlePhotoMessage(Message msg, Long chatId) {
         if (msg.getCaption() != null) {
             String msgCaption = msg.getCaption();
+            Long userId = msg.getFrom().getId();
             Map<String, String> captionContents = parseMessageCaption(msgCaption, chatId);
-            getRecordFromCaption(captionContents);
+            getRecordFromCaption(userId, captionContents);
 
             String totalActivitiesMessage = getActivityCountsMessage();
             sendText(chatId, totalActivitiesMessage);
@@ -105,7 +113,6 @@ public class FitBoisBot extends TelegramLongPollingBot {
         }
     }
 
-
     /**
     * Response for the /help command
     *
@@ -117,7 +124,8 @@ public class FitBoisBot extends TelegramLongPollingBot {
     }
 
     /**
-    * Response for the /fastgg command
+    * Response for the /fastgg commandALTER TABLE fit_boi_user DROP COLUMN fast_gg_count;
+
     *
     * @param chatId chat id to send response to
     */
@@ -179,12 +187,12 @@ public class FitBoisBot extends TelegramLongPollingBot {
         }
 
         // update is an edit from activity poster
-        if (update.getEditedMessage() != null && update.getEditedMessage().getFrom().getId().equals(lastActivityPostUserId)) {
+        /*if (update.getEditedMessage() != null && update.getEditedMessage().getFrom().getId().equals(lastActivityPostUserId)) {
             return;
-        }
+        }*/
 
         if (isGG(msg.getText())) {
-            userRepository.updateGgCount(user.getId(), user.getGroupId());
+            ggRepository.updateGgCountForCurrentYear(user.getId(), user.getGroupId());
             sendTextAsReply(chatId, fastestGG, msg.getMessageId());
             isFastestGGAvailable = false;
         }
@@ -202,7 +210,7 @@ public class FitBoisBot extends TelegramLongPollingBot {
 
     /**
      * Parse the caption attached to the photo message that represents an activity
-     * The format should be either name-activity-mm-dd-yyyy or name-activity-MMddyyyy
+     * The format should be either activity-mm-dd-yyyy or activity-MMddyyyy
      *
      * @param msgCaption caption attached to the message
      * @param chatId the chatId for the telegram group
@@ -212,27 +220,25 @@ public class FitBoisBot extends TelegramLongPollingBot {
         Map<String, String> parsedMessageContent = new HashMap<>();
         String[] splitCaption = msgCaption.split(DATE_SPLIT_FORMAT);
 
-        System.out.println(Arrays.toString(splitCaption));
         if (splitCaption.length < 3) {
-            sendText(chatId, "Invalid message format. Please follow the name-activity-mm-dd-yyyy or name-activity-MMddyyyy format.");
+            sendText(chatId, "Invalid message format. Please follow the activity-mm-dd-yyyy or activity-MMddyyyy format.");
         }
 
-        String name = splitCaption[0];
-        String activity = splitCaption[1];
+        String activity = splitCaption[0];
 
         String month, day, year;
 
-        if (splitCaption.length == 5) { //name-activity-mm-dd-yyyy
-            month = splitCaption[2];
-            day = splitCaption[3];
-            year = splitCaption[4];
-        } else { // name-activity-MMddyyyy
-            if (splitCaption[2].length() != 8) {
-                sendText(chatId, "Invalid message format. Please follow the name-activity-mm-dd-yyyy or name-activity-MMddyyyy format.");
+        if (splitCaption.length == 4) { //activity-mm-dd-yyyy
+            month = splitCaption[1];
+            day = splitCaption[2];
+            year = splitCaption[3];
+        } else { // activity-MMddyyyy
+            if (splitCaption[1].length() != 8) {
+                sendText(chatId, "Invalid message format. Please follow the activity-mm-dd-yyyy or activity-MMddyyyy format.");
             }
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern(DATE_FORMAT, Locale.ENGLISH);
-            LocalDate date = LocalDate.parse(splitCaption[2], formatter);
+            LocalDate date = LocalDate.parse(splitCaption[1], formatter);
             String[] parsedDate = date.toString().split(DATE_SEPARATOR);
 
             year = parsedDate[0];
@@ -240,7 +246,6 @@ public class FitBoisBot extends TelegramLongPollingBot {
             day = parsedDate[2];
         }
 
-        parsedMessageContent.put("name", name);
         parsedMessageContent.put("activity", activity);
         parsedMessageContent.put("day", day);
         parsedMessageContent.put("month", month);
@@ -265,9 +270,9 @@ public class FitBoisBot extends TelegramLongPollingBot {
            return fitBoiUser.get();
         } else {
             FitBoiUser newFitBoiUser = new FitBoiUser(user.getId(), user.getFirstName(), msg.getChatId());
+            FitBoiGg newFitBoiGg = new FitBoiGg(user.getId(), msg.getChatId(), String.valueOf(LocalDate.now().getYear()), 0);
             userRepository.save(newFitBoiUser);
-            userRepository.initializeGgCount(user.getId(), msg.getChatId());
-
+            ggRepository.save(newFitBoiGg);
             return newFitBoiUser;
         }
     }
@@ -278,15 +283,14 @@ public class FitBoisBot extends TelegramLongPollingBot {
      *
      * @param captionContents parsed caption from the message
      */
-    public void getRecordFromCaption(Map<String, String> captionContents) {
-        String name = captionContents.get("name");
+    public void getRecordFromCaption(Long userId, Map<String, String> captionContents) {
         String activity = captionContents.get("activity");
         String month = captionContents.get("month");
         String day =  captionContents.get("day");
         String year = captionContents.get("year");
 
-        FitBoiRecord newFitBoiRecord = new FitBoiRecord(name, activity, month, day, year);
-        fitBoisRepository.save(newFitBoiRecord);
+        FitBoiRecord newFitBoiRecord = new FitBoiRecord(userId, activity, month, day, year);
+        recordRepository.save(newFitBoiRecord);
     }
 
     /**
@@ -298,13 +302,14 @@ public class FitBoisBot extends TelegramLongPollingBot {
     public String getActivityCountsMessage() {
         //TODO: Before returning activity counts make sure the fetched users belong in that
         //TODO: particular group.
-        List<String> names = fitBoisRepository.findDistinctName();
+        List<Long> userIds = recordRepository.findDistinctRecords();
         HashMap<String, Long> counts = new HashMap<>();
 
-        for (String retrievedName : names) {
-            Long countOfRecords = fitBoisRepository.countByName(retrievedName);
+        for (Long userId : userIds) {
+            Long countOfRecords = recordRepository.countByUserIdAndCurrentYear(userId);
+            String name = userRepository.findById(userId).get().getName();
 
-            counts.put(retrievedName, countOfRecords);
+            counts.put(name, countOfRecords);
         }
 
         String content = counts.entrySet()
@@ -320,7 +325,7 @@ public class FitBoisBot extends TelegramLongPollingBot {
         HashMap<String, Integer> counts = new HashMap<>();
 
         for (FitBoiUser user : users) {
-            int ggCount = userRepository.fetchFastGgCountById(user.getId());
+            int ggCount = ggRepository.fetchFastGgCountByIdAndCurrentYear(user.getId());
 
             counts.put(user.getName(), ggCount);
         }
