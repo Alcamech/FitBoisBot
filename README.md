@@ -28,8 +28,9 @@ Refer to `dev.properties` for database credentials.
 Please create a databaes called `ftibois` and run the script `resources/fitbois.sql`
 
 ## TODO
-
-* see TODOs in code
+* Improve and update documentation
+* Small refactor
+* TODOs in code
 * Break out methods 
 * document `/fastgg`
 * improve formatting of bot messages
