@@ -195,6 +195,8 @@ public class FitBoisBot extends TelegramLongPollingBot {
         }
 
         if (isGG(msg.getText())) {
+            int currentYear = LocalDate.now().getYear();
+            System.out.println("Current Year: " + currentYear);
             ggRepository.updateGgCountForCurrentYear(user.getId(), user.getGroupId());
             sendTextAsReply(chatId, fastestGG, msg.getMessageId());
             isFastestGGAvailable = false;
