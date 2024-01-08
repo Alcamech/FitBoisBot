@@ -42,6 +42,8 @@ Please create a databaes called `ftibois` and run the script `resources/fitbois.
 * Intelligent Q/A with SQL data 
 * Monthly Count
 * Monthly Check-Ins
+* Monthly rewards
+* Fit Boi of the Year Awards EOY
 * Logging
 
 # Planned Features
