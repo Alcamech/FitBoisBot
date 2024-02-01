@@ -64,17 +64,23 @@ public class FitBoisBot extends TelegramLongPollingBot {
     @Scheduled(cron = "0 0 9 1 * ?", zone = "America/New_York")
     public void awardMostActiveUserForPreviousMonth() {
         ZonedDateTime nowInEST = ZonedDateTime.now(ZoneId.of("America/New_York"));
+        System.out.println("SCHEDULED - Time now in EST: " + nowInEST);
         int year = nowInEST.getYear();
         int month = nowInEST.minusMonths(1).getMonthValue();
 
         Long maxActivityCount = recordRepository.findMaxActivityCountByYearAndMonth(year, month);
         if (maxActivityCount != null && maxActivityCount > 0) {
             List<Long> mostActiveUserIds = recordRepository.findAllUsersWithMaxCount(year, month, maxActivityCount);
+
+            String resetMessage = "Monthly counts have been reset";
+            FitBoiUser anActiveUser = userRepository.findById(mostActiveUserIds.get(0)).orElse(null);
+            sendText(anActiveUser.getGroupId(), resetMessage);
+
             for (Long userId : mostActiveUserIds) {
                 FitBoiUser mostActiveUser = userRepository.findById(userId).orElse(null);
                 if (mostActiveUser != null) {
-                    String message = "Congratulations \u2B50 " + mostActiveUser.getName() + " \u2B50 for being the most active user for " + month + "/" + year + " \uD83C\uDFC6";
-                    sendText(mostActiveUser.getGroupId(), message);
+                    String congratsMessage = "Congratulations \u2B50 " + mostActiveUser.getName() + " \u2B50 for being the most active user for " + month + "/" + year + " \uD83C\uDFC6";
+                    sendText(mostActiveUser.getGroupId(), congratsMessage);
                     String rewardMessage = "Here's your reward. \uD83D\uDCB0 You've won 100 FitBoi Tokens! \uD83D\uDCB0";
                     sendText(mostActiveUser.getGroupId(), rewardMessage);
                 }
@@ -342,6 +348,7 @@ public class FitBoisBot extends TelegramLongPollingBot {
         HashMap<String, Long> counts = new HashMap<>();
 
         ZonedDateTime nowInEST = ZonedDateTime.now(ZoneId.of("America/New_York"));
+        System.out.println("ACTIVITY COUNTS MESSAGE - Time now in EST: " + nowInEST);
         String month = nowInEST.format(DateTimeFormatter.ofPattern("MM"));
 
         for (Long userId : userIds) {
