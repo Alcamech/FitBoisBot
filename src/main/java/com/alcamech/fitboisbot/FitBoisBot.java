@@ -341,8 +341,11 @@ public class FitBoisBot extends TelegramLongPollingBot {
         List<Long> userIds = recordRepository.findDistinctRecords();
         HashMap<String, Long> counts = new HashMap<>();
 
+        ZonedDateTime nowInEST = ZonedDateTime.now(ZoneId.of("America/New_York"));
+        String month = nowInEST.format(DateTimeFormatter.ofPattern("MM"));
+
         for (Long userId : userIds) {
-            Long countOfRecords = recordRepository.countByUserIdWithCurrentYearAndMonth(userId);
+            Long countOfRecords = recordRepository.countByUserIdWithCurrentYearAndMonth(userId, month);
             String name = userRepository.findById(userId).get().getName();
 
             counts.put(name, countOfRecords);

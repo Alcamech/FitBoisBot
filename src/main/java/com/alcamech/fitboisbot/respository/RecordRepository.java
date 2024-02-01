@@ -14,8 +14,8 @@ public interface RecordRepository extends CrudRepository<FitBoiRecord, Integer> 
     @Query("SELECT COUNT(*) FROM FitBoiRecord WHERE userId = :userId AND year = YEAR(CURDATE())")
     Long countByUserIdAndCurrentYear(Long userId);
 
-    @Query("SELECT COUNT(*) FROM FitBoiRecord WHERE userId = :userId AND year = YEAR(CONVERT_TZ(CURDATE(), '+00:00', '-05:00')) AND month = MONTH(CONVERT_TZ(CURDATE(), '+00:00', '-05:00'))")
-    Long countByUserIdWithCurrentYearAndMonth(Long userId);
+    @Query("SELECT COUNT(*) FROM FitBoiRecord WHERE userId = :userId AND year = YEAR(CURDATE()) AND month = :month")
+    Long countByUserIdWithCurrentYearAndMonth(@Param("userId") Long userId, @Param("month") String month);
 
     @Query("SELECT MAX(COUNT(f)) FROM FitBoiRecord f WHERE f.year = :year AND f.month = :month GROUP BY f.userId")
     Long findMaxActivityCountByYearAndMonth(@Param("year") int year, @Param("month") int month);
