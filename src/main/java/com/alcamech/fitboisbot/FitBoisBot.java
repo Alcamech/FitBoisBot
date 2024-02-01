@@ -66,14 +66,16 @@ public class FitBoisBot extends TelegramLongPollingBot {
         ZonedDateTime nowInEST = ZonedDateTime.now(ZoneId.of("America/New_York"));
         int year = nowInEST.getYear();
         int month = nowInEST.minusMonths(1).getMonthValue();
-        Long mostActiveUserId = recordRepository.findMostActiveUserByYearAndMonth(year, month);
 
-        if (mostActiveUserId != null) {
-            FitBoiUser mostActiveUser = userRepository.findById(mostActiveUserId).get();
-            String message = "Congratulations \u2B50 " + mostActiveUser.getName() + " \u2B50 for being the most active user for " + month + "/" + year + " \uD83C\uDFC6";
-            sendText(mostActiveUser.getGroupId(), message);
-            String rewardMessage = "Here's your reward. \uD83D\uDCB0 You've won 100 FitBoi Tokens! \uD83D\uDCB0";
-            sendText(mostActiveUser.getGroupId(), rewardMessage);
+        List<Long> mostActiveUserIds = recordRepository.findMostActiveUsersByYearAndMonth(year, month);
+        for (Long userId : mostActiveUserIds) {
+            FitBoiUser mostActiveUser = userRepository.findById(userId).orElse(null);
+            if (mostActiveUser != null) {
+                String message = "Congratulations \u2B50 " + mostActiveUser.getName() + " \u2B50 for being the most active user for " + month + "/" + year + " \uD83C\uDFC6";
+                sendText(mostActiveUser.getGroupId(), message);
+                String rewardMessage = "Here's your reward. \uD83D\uDCB0 You've won 100 FitBoi Tokens! \uD83D\uDCB0";
+                sendText(mostActiveUser.getGroupId(), rewardMessage);
+            }
         }
     }
 
