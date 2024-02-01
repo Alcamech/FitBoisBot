@@ -17,9 +17,9 @@ public interface RecordRepository extends CrudRepository<FitBoiRecord, Integer> 
     @Query("SELECT COUNT(*) FROM FitBoiRecord WHERE userId = :userId AND year = YEAR(CONVERT_TZ(CURDATE(), '+00:00', '-05:00')) AND month = MONTH(CONVERT_TZ(CURDATE(), '+00:00', '-05:00'))")
     Long countByUserIdWithCurrentYearAndMonth(Long userId);
 
-    //TODO: GROSS SQL need to fix
-    @Query("SELECT f.userId FROM FitBoiRecord f WHERE f.year = :year AND f.month = :month GROUP BY f.userId HAVING " +
-            "COUNT(*) = (SELECT MAX(sub.count) FROM (SELECT COUNT(*) as count FROM FitBoiRecord sub WHERE sub.year = :year " +
-            "AND sub.month = :month GROUP BY sub.userId) as sub)")
-    List<Long> findMostActiveUsersByYearAndMonth(@Param("year") int year, @Param("month") int month);
+    @Query("SELECT MAX(COUNT(f)) FROM FitBoiRecord f WHERE f.year = :year AND f.month = :month GROUP BY f.userId")
+    Long findMaxActivityCountByYearAndMonth(@Param("year") int year, @Param("month") int month);
+
+    @Query("SELECT f.userId FROM FitBoiRecord f WHERE f.year = :year AND f.month = :month GROUP BY f.userId HAVING COUNT(f) = :maxCount")
+    List<Long> findAllUsersWithMaxCount(@Param("year") int year, @Param("month") int month, @Param("maxCount") Long maxCount);
 }

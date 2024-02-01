@@ -67,14 +67,17 @@ public class FitBoisBot extends TelegramLongPollingBot {
         int year = nowInEST.getYear();
         int month = nowInEST.minusMonths(1).getMonthValue();
 
-        List<Long> mostActiveUserIds = recordRepository.findMostActiveUsersByYearAndMonth(year, month);
-        for (Long userId : mostActiveUserIds) {
-            FitBoiUser mostActiveUser = userRepository.findById(userId).orElse(null);
-            if (mostActiveUser != null) {
-                String message = "Congratulations \u2B50 " + mostActiveUser.getName() + " \u2B50 for being the most active user for " + month + "/" + year + " \uD83C\uDFC6";
-                sendText(mostActiveUser.getGroupId(), message);
-                String rewardMessage = "Here's your reward. \uD83D\uDCB0 You've won 100 FitBoi Tokens! \uD83D\uDCB0";
-                sendText(mostActiveUser.getGroupId(), rewardMessage);
+        Long maxActivityCount = recordRepository.findMaxActivityCountByYearAndMonth(year, month);
+        if (maxActivityCount != null && maxActivityCount > 0) {
+            List<Long> mostActiveUserIds = recordRepository.findAllUsersWithMaxCount(year, month, maxActivityCount);
+            for (Long userId : mostActiveUserIds) {
+                FitBoiUser mostActiveUser = userRepository.findById(userId).orElse(null);
+                if (mostActiveUser != null) {
+                    String message = "Congratulations \u2B50 " + mostActiveUser.getName() + " \u2B50 for being the most active user for " + month + "/" + year + " \uD83C\uDFC6";
+                    sendText(mostActiveUser.getGroupId(), message);
+                    String rewardMessage = "Here's your reward. \uD83D\uDCB0 You've won 100 FitBoi Tokens! \uD83D\uDCB0";
+                    sendText(mostActiveUser.getGroupId(), rewardMessage);
+                }
             }
         }
     }
