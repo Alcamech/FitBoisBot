@@ -61,7 +61,7 @@ public class FitBoisBot extends TelegramLongPollingBot {
     private Long lastActivityPostUserId;
     private boolean isFastestGGAvailable;
 
-    @Scheduled(cron = "0 0 10 1 * ?", zone = "America/New_York")
+    @Scheduled(cron = "0 5 10 1 * ?", zone = "America/New_York")
     public void awardMostActiveUserForPreviousMonth() {
         ZonedDateTime nowInEST = ZonedDateTime.now(ZoneId.of("America/New_York"));
         System.out.println("SCHEDULED - Time now in EST: " + nowInEST);
