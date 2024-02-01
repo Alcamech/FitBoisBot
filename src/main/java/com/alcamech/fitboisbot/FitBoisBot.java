@@ -61,16 +61,21 @@ public class FitBoisBot extends TelegramLongPollingBot {
     private Long lastActivityPostUserId;
     private boolean isFastestGGAvailable;
 
-    @Scheduled(cron = "0 15 9 1 * ?", zone = "America/New_York")
+    @Scheduled(cron = "0 35 9 1 * ?", zone = "America/New_York")
     public void awardMostActiveUserForPreviousMonth() {
         ZonedDateTime nowInEST = ZonedDateTime.now(ZoneId.of("America/New_York"));
         System.out.println("SCHEDULED - Time now in EST: " + nowInEST);
-        int year = nowInEST.getYear();
-        int month = nowInEST.minusMonths(1).getMonthValue();
 
-        Long maxActivityCount = recordRepository.findMaxActivityCountByYearAndMonth(year, month);
+        String year = String.valueOf(nowInEST.getYear());
+        String month = String.format("%02d", nowInEST.getMonthValue() - 1);
+        if(month.equals("00")) {
+            year = String.valueOf(Integer.parseInt(year) - 1); // Decrement year if month is December of the previous year
+            month = "12";
+        }
+
+        Long maxActivityCount = recordRepository.findMaxActivityCountByYearAndMonth(month);
         if (maxActivityCount != null && maxActivityCount > 0) {
-            List<Long> mostActiveUserIds = recordRepository.findAllUsersWithMaxCount(year, month, maxActivityCount);
+            List<Long> mostActiveUserIds = recordRepository.findAllUsersWithMaxCount(month, maxActivityCount);
 
             String resetMessage = "Monthly counts have been reset";
             FitBoiUser anActiveUser = userRepository.findById(mostActiveUserIds.get(0)).orElse(null);
