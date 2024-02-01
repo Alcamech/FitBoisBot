@@ -29,6 +29,7 @@ Create a database called `ftibois` and run the script `resources/fitbois.sql`
 
 ## TODO
 * Improve and update documentation
+* Update dependencies
 * Small refactor
 * TODOs in code
 * Break out methods 
@@ -38,11 +39,13 @@ Create a database called `ftibois` and run the script `resources/fitbois.sql`
 * Write test
 * Create Changelog
 * Create Release Notes
-* Overview of 2023
+* ~~Overview of 2023~~
 * Intelligent Q/A with SQL data 
-* Monthly Count
+* ~~Monthly Count~~
 * Monthly Check-Ins
 * Monthly rewards
+* Allow users to set timezone
+* Scale for other groups
 * Fit Boi of the Year Awards EOY
 * Logging
 

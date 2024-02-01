@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -20,6 +21,8 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.time.LocalDate;
 import java.time.Year;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -58,6 +61,21 @@ public class FitBoisBot extends TelegramLongPollingBot {
     private Long lastActivityPostUserId;
     private boolean isFastestGGAvailable;
 
+    @Scheduled(cron = "0 0 9 1 * ?", zone = "America/New_York")
+    public void awardMostActiveUserForPreviousMonth() {
+        ZonedDateTime nowInEST = ZonedDateTime.now(ZoneId.of("America/New_York"));
+        int year = nowInEST.getYear();
+        int month = nowInEST.minusMonths(1).getMonthValue();
+        Long mostActiveUserId = recordRepository.findMostActiveUserByYearAndMonth(year, month);
+
+        if (mostActiveUserId != null) {
+            FitBoiUser mostActiveUser = userRepository.findById(mostActiveUserId).get();
+            String message = "Congratulations \u2B50 " + mostActiveUser.getName() + " \u2B50 for being the most active user for " + month + "/" + year + " \uD83C\uDFC6";
+            sendText(mostActiveUser.getGroupId(), message);
+            String rewardMessage = "Here's your reward. \uD83D\uDCB0 You've won 100 FitBoi Tokens! \uD83D\uDCB0";
+            sendText(mostActiveUser.getGroupId(), rewardMessage);
+        }
+    }
 
     @Override
     public void onUpdateReceived(Update update) {
