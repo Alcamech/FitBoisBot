@@ -17,5 +17,4 @@ public class FitBoisBotApplication {
     public static void main(String[] args) {
         SpringApplication.run(FitBoisBotApplication.class, args);
     }
-
 }
