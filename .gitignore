@@ -1,36 +1,41 @@
-HELP.md
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
 
-### Dev Properties ###
-dev.properties
+# Go workspace file
+go.work
 
-### IntelliJ IDEA ###
-.idea
-*.iws
+# Go modules
+/go/bin/
+/go/pkg/
+/go.sum
+/vendor/
+
+# IntelliJ project files
+.idea/
 *.iml
 *.ipr
+*.iws
+/out/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
+# Log files
+*.log
 
-### VS Code ###
+# IDE specific directories
 .vscode/
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Go dependencies
+bin/
+pkg/
