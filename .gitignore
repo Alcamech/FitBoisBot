@@ -15,7 +15,6 @@ go.work
 # Go modules
 /go/bin/
 /go/pkg/
-/go.sum
 /vendor/
 
 # IntelliJ project files
