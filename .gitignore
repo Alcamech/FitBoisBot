@@ -39,3 +39,6 @@ Thumbs.db
 # Go dependencies
 bin/
 pkg/
+
+# environment file
+config.yaml
