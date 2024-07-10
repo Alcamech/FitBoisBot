@@ -2,12 +2,15 @@ module github.com/Alcamech/FitBoisBot
 
 go 1.22.3
 
-require github.com/spf13/viper v1.10.1
+require (
+	github.com/go-sql-driver/mysql v1.8.1
+	github.com/spf13/viper v1.10.1
+)
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/go-sql-driver/mysql v1.8.1 // indirect
+	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
