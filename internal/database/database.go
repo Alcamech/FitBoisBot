@@ -1,14 +1,16 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
-	"github.com/Alcamech/FitBoisBot/config"
-	_ "github.com/go-sql-driver/mysql"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 	"log"
+
+	"github.com/Alcamech/FitBoisBot/config"
+	"github.com/Alcamech/FitBoisBot/internal/database/models"
 )
 
-var DB *sql.DB
+var DB *gorm.DB
 
 func InitDB() {
 	dataSourceName := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
@@ -20,13 +22,14 @@ func InitDB() {
 	)
 
 	var err error
-	DB, err = sql.Open("mysql", dataSourceName)
+	DB, err = gorm.Open(mysql.Open(dataSourceName), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
 	}
 
-	if err := DB.Ping(); err != nil {
-		log.Fatalf("Error pinging database: %v", err)
+	err = DB.AutoMigrate(&models.User{})
+	if err != nil {
+		log.Fatalf("Failed to migrate database schema: %v", err)
 	}
 
 	log.Println("Connected to database")

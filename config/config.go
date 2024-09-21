@@ -11,6 +11,7 @@ type Config struct {
 		DevToken  string `mapstructure:"dev-token"`
 		QaToken   string `mapstructure:"qa-token"`
 		ProdToken string `mapstructure:"prod-token"`
+		Debug     bool   `mapstructure:"debug-mode"`
 	}
 
 	Database struct {

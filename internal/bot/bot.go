@@ -1,19 +1,21 @@
 package bot
 
 import (
-	"github.com/Alcamech/FitBoisBot/config"
-	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
+
+	"github.com/Alcamech/FitBoisBot/config"
+	"github.com/Alcamech/FitBoisBot/internal/database/repository"
+	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func StartBot() {
+func BotLoop() {
 	log.Println("FitBoisBot Started")
 	bot, err := tgbotapi.NewBotAPI(config.AppConfig.Telegram.DevToken)
 	if err != nil {
 		log.Panic(err)
 	}
 
-	bot.Debug = true
+	bot.Debug = config.AppConfig.Telegram.Debug
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
@@ -28,11 +30,27 @@ func StartBot() {
 		if update.Message != nil {
 			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
-			var msg tgbotapi.MessageConfig
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "go-rewrite: message received")
-			msg.ReplyToMessageID = update.Message.MessageID
+			messageText := update.Message.Text
+			userID := update.Message.From.ID
+			userName := update.Message.From.FirstName
+			groupID := update.Message.Chat.ID
 
-			bot.Send(msg)
+			user, err := repository.GetOrCreateUser(userID, userName, groupID)
+
+			if err != nil {
+				log.Printf("Error handling user: %v", err)
+			}
+
+			log.Printf("Message: %s", messageText)
+			log.Printf("User: %+v", user)
+
+			/*
+				var msg tgbotapi.MessageConfig
+				msg = tgbotapi.NewMessage(update.Message.Chat.ID, "go-rewrite: message received")
+				msg.ReplyToMessageID = update.Message.MessageID
+
+				bot.Send(msg)
+			*/
 		}
 	}
 }

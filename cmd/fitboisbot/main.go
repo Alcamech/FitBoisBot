@@ -9,5 +9,5 @@ import (
 func main() {
 	config.InitConfig()
 	database.InitDB()
-	bot.StartBot()
+	bot.BotLoop()
 }
