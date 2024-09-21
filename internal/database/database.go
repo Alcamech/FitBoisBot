@@ -27,7 +27,7 @@ func InitDB() {
 		log.Fatalf("Error opening database: %v", err)
 	}
 
-	err = DB.AutoMigrate(&models.User{})
+	err = DB.AutoMigrate(&models.User{}, &models.Activity{}, &models.Gg{})
 	if err != nil {
 		log.Fatalf("Failed to migrate database schema: %v", err)
 	}
