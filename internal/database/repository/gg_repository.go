@@ -21,6 +21,7 @@ func (r *GGRepository) CreateOrUpdateGGCount(userID, groupID int64, year string)
 		}
 		return r.DB.Create(&gg).Error
 	}
+
 	if err != nil {
 		return err
 	}

@@ -1,13 +1,15 @@
 package bot
 
 import (
+	"fmt"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/Alcamech/FitBoisBot/config"
 	"github.com/Alcamech/FitBoisBot/internal/database"
 	"github.com/Alcamech/FitBoisBot/internal/database/repository"
-	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 var (
@@ -15,11 +17,12 @@ var (
 	isFastestGGAvailable bool
 	stateMutex           sync.Mutex
 
-	bot      *tgbotapi.BotAPI
-	userRepo *repository.UserRepository
+	bot          *tgbotapi.BotAPI
+	userRepo     *repository.UserRepository
+	activityRepo *repository.ActivityRepository
 )
 
-func InitBot() {
+func BotLoop() {
 	log.Println("FitBoisBot Started")
 	bot, err := tgbotapi.NewBotAPI(config.AppConfig.Telegram.DevToken)
 	if err != nil {
@@ -29,39 +32,61 @@ func InitBot() {
 	bot.Debug = config.AppConfig.Telegram.Debug
 
 	userRepo = &repository.UserRepository{DB: database.DB}
+	activityRepo = &repository.ActivityRepository{DB: database.DB}
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
-}
-
-func BotLoop() {
-	InitBot()
-
-	var botConfig tgbotapi.UpdateConfig
-	botConfig = tgbotapi.NewUpdate(0)
+	var botConfig tgbotapi.UpdateConfig = tgbotapi.NewUpdate(0)
+	botConfig.AllowedUpdates = []string{"message", "edited_message"}
 	botConfig.Timeout = 60
 
-	var updates tgbotapi.UpdatesChannel
-	updates = bot.GetUpdatesChan(botConfig)
+	var updates tgbotapi.UpdatesChannel = bot.GetUpdatesChan(botConfig)
 
 	for update := range updates {
-		if update.Message != nil {
+		if update.EditedMessage != nil {
+			handleUpdate(bot, update)
+		} else if update.Message != nil {
 			handleUpdate(bot, update)
 		}
 	}
 }
 
 func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-	msg := update.Message
-	userID := msg.From.ID
-	userName := msg.From.FirstName
-	chatID := msg.Chat.ID
+	msg := getMessageFromUpdate(update)
 
-	user, err := userRepo.GetOrCreateUser(userID, userName, chatID)
+	if msg == nil {
+		return
+	}
+
+	from := msg.From
+	chat := msg.Chat
+	userId, userName, chatID := from.ID, from.FirstName, chat.ID
+
+	user, err := userRepo.GetOrCreateUser(userId, userName, chatID)
 	if err != nil {
 		log.Printf("Error getting or creating user: %v", err)
 		return
+	}
+
+	if isPhoto(msg) {
+		sendText(bot, chatID, "go-rewrite: photo detected.")
+	} else if isActivity(msg) && isActivityValidFormat(msg.Caption) {
+		sendText(bot, chatID, "go-rewrite: activity detected.")
+		if err := onActivityPost(msg, user); err == nil {
+			activityCountsMessage, err := getActivityCountsMessage()
+			if err == nil {
+				sendText(bot, chatID, activityCountsMessage)
+			} else {
+				log.Printf("Error getting activity counts: %v", err)
+			}
+		} else {
+			log.Printf("Error posting activity: %v", err)
+		}
+
+	} else if isGG(msg.Text) {
+		sendText(bot, chatID, "go-rewrite: gg detected.")
+	} else {
+		sendText(bot, chatID, "go-rewrite: non-activity detected.")
 	}
 
 	if msg.IsCommand() {
@@ -69,14 +94,25 @@ func handleUpdate(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	}
 
 	log.Printf("User: %v, Message: %s", user.ToString(), msg.Text)
+}
 
-	/*
-		var msg tgbotapi.MessageConfig
-		msg = tgbotapi.NewMessage(update.Message.Chat.ID, "go-rewrite: message received")
-		msg.ReplyToMessageID = update.Message.MessageID
+func getMessageFromUpdate(update tgbotapi.Update) *tgbotapi.Message {
+	var msg *tgbotapi.Message
 
-		bot.Send(msg)
-	*/
+	if update.EditedMessage != nil {
+		msg = update.EditedMessage
+	} else if update.Message != nil {
+		msg = update.Message
+
+		if msg.Photo != nil {
+			stateMutex.Lock()
+			lastMessageUserID = msg.From.ID
+			isFastestGGAvailable = true
+			stateMutex.Unlock()
+		}
+	}
+
+	return msg
 }
 
 func handleCommand(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
@@ -88,17 +124,17 @@ func handleCommand(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 	}
 }
 
-func onHelp(bot *tgbotapi.BotAPI, chatID int64) {
-	message := "Nothing to see here... yet"
-	sendText(bot, chatID, message)
-}
+func parseActivityMessage(msg *tgbotapi.Message) (string, string, string, string, error) {
+	// format "activity-MM-DD-YYYY" or "activity-MMDDYYYY"
+	parts := strings.Split(msg.Caption, "-")
+	if len(parts) < 4 {
+		return "", "", "", "", fmt.Errorf("invalid message format")
+	}
 
-func onFastGG(bot *tgbotapi.BotAPI, chatID int64) {
-	message := "Fastest GG: (Sample Data)"
-	sendText(bot, chatID, message)
-}
+	activity := parts[0]
+	month := parts[1]
+	day := parts[2]
+	year := parts[3]
 
-func sendText(bot *tgbotapi.BotAPI, chatID int64, message string) {
-	msg := tgbotapi.NewMessage(chatID, message)
-	bot.Send(msg)
+	return activity, month, day, year, nil
 }

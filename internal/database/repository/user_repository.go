@@ -11,10 +11,9 @@ type UserRepository struct {
 
 func (r *UserRepository) GetOrCreateUser(userID int64, name string, groupID int64) (*models.User, error) {
 	var user models.User
-	result := r.DB.First(&user, userID)
-
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
+	err := r.DB.First(&user, userID).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
 			user = models.User{
 				ID:      userID,
 				Name:    name,
@@ -24,9 +23,20 @@ func (r *UserRepository) GetOrCreateUser(userID int64, name string, groupID int6
 			if err := r.DB.Create(&user).Error; err != nil {
 				return nil, err
 			}
-		} else {
-			return nil, result.Error
+
+			return &user, nil
 		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *UserRepository) FindByID(userID int64) (*models.User, error) {
+	var user models.User
+	err := r.DB.First(&user, userID).Error
+	if err != nil {
+		return nil, err
 	}
 
 	return &user, nil
