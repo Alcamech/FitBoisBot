@@ -1,6 +1,6 @@
 services:
   mysql_db:
-    image: "mysql:8.0"
+    image: "mariadb:latest"
     restart: always
     ports:
       - "3306:3306"

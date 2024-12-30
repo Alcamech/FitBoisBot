@@ -8,45 +8,55 @@ import (
 )
 
 func sendText(bot *tgbotapi.BotAPI, chatID int64, message string) {
+	bot.Send(tgbotapi.NewMessage(chatID, message))
+}
+
+func sendReply(bot *tgbotapi.BotAPI, chatID int64, message string, replyToMessageID int) {
 	msg := tgbotapi.NewMessage(chatID, message)
+	msg.ReplyToMessageID = replyToMessageID
 	bot.Send(msg)
 }
 
-func getActivityCountsMessage() (string, error) {
-	nowInEST, err := getTimeInEST()
+func getActivityCountsMessage(chatID int64) (string, error) {
+	month, err := getCurrentMonthInEST()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get current month: %w", err)
 	}
 
-	month := nowInEST.Format("01") // MM in Go is "01"
-
-	userIDs, err := activityRepo.GetUsersWithActivities()
+	userIDs, err := activityRepo.GetUsersWithActivities(chatID)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch record count: %v", err)
+		return "", fmt.Errorf("failed to fetch user activities: %w", err)
 	}
 
-	userCounts := make(map[string]int64)
-
+	userCounts := make(map[string]int64, len(userIDs))
 	for _, userID := range userIDs {
-		count, err := activityRepo.GetActivityCountByUserIdAndMonth(userID, month)
+		count, err := activityRepo.GetActivityCountByUserIdAndMonth(userID, chatID, month)
 		if err != nil {
-			return "", fmt.Errorf("failed to fetch record count: %v", err)
+			return "", fmt.Errorf("failed to fetch activity count for user %d: %w", userID, err)
 		}
 
 		user, err := userRepo.FindByID(userID)
 		if err != nil {
-			return "", fmt.Errorf("failed to fetch user: %v", err)
+			return "", fmt.Errorf("failed to fetch user %d: %w", userID, err)
 		}
 
 		userCounts[user.Name] = count
 	}
 
-	var content strings.Builder
-	for name, count := range userCounts {
-		content.WriteString(fmt.Sprintf("%s=%d, ", name, count))
+	return formatActivityCounts(userCounts), nil
+}
+
+func formatActivityCounts(userCounts map[string]int64) string {
+	if len(userCounts) == 0 {
+		return "No activity recorded."
 	}
 
-	contentStr := strings.TrimRight(content.String(), ", ")
+	var builder strings.Builder
+	builder.WriteString("Activity counts updated: ")
 
-	return fmt.Sprintf("Activity counts updated: %s", contentStr), nil
+	for name, count := range userCounts {
+		fmt.Fprintf(&builder, "%s=%d, ", name, count)
+	}
+
+	return strings.TrimSuffix(builder.String(), ", ")
 }

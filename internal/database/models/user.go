@@ -3,11 +3,11 @@ package models
 import "fmt"
 
 type User struct {
-	ID        int64      `gorm:"primaryKey"`
 	Name      string     `gorm:"size:100;not null"`
-	GroupID   int64      `gorm:"not null"`
-	Activites []Activity `gorm:"foreignKey:UserID"`
 	GGRecords []Gg       `gorm:"foreignKey:UserID"`
+	Activites []Activity `gorm:"foreignKey:UserID"`
+	ID        int64      `gorm:"primaryKey"`
+	GroupID   int64      `gorm:"not null"`
 }
 
 func (u User) ToString() string {

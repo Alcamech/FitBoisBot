@@ -2,9 +2,10 @@ package database
 
 import (
 	"fmt"
+	"log"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"log"
 
 	"github.com/Alcamech/FitBoisBot/config"
 	"github.com/Alcamech/FitBoisBot/internal/database/models"
@@ -13,24 +14,20 @@ import (
 var DB *gorm.DB
 
 func InitDB() {
-	dataSourceName := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
-		config.AppConfig.Database.Username,
-		config.AppConfig.Database.Password,
-		config.AppConfig.Database.Host,
-		config.AppConfig.Database.Port,
-		config.AppConfig.Database.Name,
+	cfg := config.AppConfig.Database
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
+		cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Name,
 	)
 
 	var err error
-	DB, err = gorm.Open(mysql.Open(dataSourceName), &gorm.Config{})
+	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("Error opening database: %v", err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	err = DB.AutoMigrate(&models.User{}, &models.Activity{}, &models.Gg{})
-	if err != nil {
-		log.Fatalf("Failed to migrate database schema: %v", err)
+	if err := DB.AutoMigrate(&models.User{}, &models.Activity{}, &models.Gg{}); err != nil {
+		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	log.Println("Connected to database")
+	log.Println("Database connection established and schema migrated")
 }
