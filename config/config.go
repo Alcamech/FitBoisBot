@@ -29,8 +29,6 @@ var AppConfig Config
 func InitConfig() {
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
-	// Environment variable prefixes (optional)
 	viper.SetEnvPrefix("fitbois")
 
 	viper.SetConfigName("config")
@@ -38,11 +36,14 @@ func InitConfig() {
 	viper.AddConfigPath(".")
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Printf("Warning: Config file not found: %v", err)
+		log.Printf("Config file not found or not used: %v", err)
 	}
 
 	viper.SetDefault("telegram.debug-mode", false)
+
 	if err := viper.Unmarshal(&AppConfig); err != nil {
 		log.Fatalf("Unable to decode into struct: %v", err)
 	}
+
+	log.Printf("Loaded Config: %+v", AppConfig)
 }
