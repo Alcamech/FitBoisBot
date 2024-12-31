@@ -31,6 +31,14 @@ func InitConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.SetEnvPrefix("fitbois")
 
+	viper.BindEnv("database.username", "FITBOIS_DATABASE_USERNAME")
+	viper.BindEnv("database.password", "FITBOIS_DATABASE_PASSWORD")
+	viper.BindEnv("database.host", "FITBOIS_DATABASE_HOST")
+	viper.BindEnv("database.port", "FITBOIS_DATABASE_PORT")
+	viper.BindEnv("database.name", "FITBOIS_DATABASE_NAME")
+	viper.BindEnv("telegram.dev-token", "FITBOIS_TELEGRAM_DEV_TOKEN")
+	viper.BindEnv("telegram.debug-mode", "FITBOIS_TELEGRAM_DEBUG_MODE")
+
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
