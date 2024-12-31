@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -26,15 +27,22 @@ type Config struct {
 var AppConfig Config
 
 func InitConfig() {
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	// Environment variable prefixes (optional)
+	viper.SetEnvPrefix("fitbois")
+
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("Error reading config file: %v", err)
+		log.Printf("Warning: Config file not found: %v", err)
 	}
 
+	viper.SetDefault("telegram.debug-mode", false)
 	if err := viper.Unmarshal(&AppConfig); err != nil {
-		log.Fatalf("Unable to decode into struct, %v", err)
+		log.Fatalf("Unable to decode into struct: %v", err)
 	}
 }
