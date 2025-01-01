@@ -39,3 +39,11 @@ func (r *ActivityRepository) GetUsersWithActivities(groupID int64) ([]int64, err
 	err := r.DB.Model(&models.Activity{}).Where("group_id = ?", groupID).Distinct("user_id").Pluck("user_id", &userIDs).Error
 	return userIDs, err
 }
+
+func (r *ActivityRepository) GetActivityCountByUserIdAndMonthAndYear(userID, groupID int64, month, year string) (int64, error) {
+	var count int64
+	err := r.DB.Model(&models.Activity{}).
+		Where("user_id = ? AND group_id = ? AND month = ? AND year = ?", userID, groupID, month, year).
+		Count(&count).Error
+	return count, err
+}

@@ -19,6 +19,8 @@ func sendReply(bot *tgbotapi.BotAPI, chatID int64, message string, replyToMessag
 
 func getActivityCountsMessage(chatID int64) (string, error) {
 	month := GetCurrentMonthInEST()
+	year := GetCurrentYearInEST()
+
 	userIDs, err := activityRepo.GetUsersWithActivities(chatID)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch user activities: %w", err)
@@ -26,7 +28,7 @@ func getActivityCountsMessage(chatID int64) (string, error) {
 
 	userCounts := make(map[string]int64, len(userIDs))
 	for _, userID := range userIDs {
-		count, err := activityRepo.GetActivityCountByUserIdAndMonth(userID, chatID, month)
+		count, err := activityRepo.GetActivityCountByUserIdAndMonthAndYear(userID, chatID, month, year)
 		if err != nil {
 			return "", fmt.Errorf("failed to fetch activity count for user %d: %w", userID, err)
 		}
