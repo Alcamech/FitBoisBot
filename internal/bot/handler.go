@@ -8,7 +8,8 @@ import (
 )
 
 func onFastGG(bot *tgbotapi.BotAPI, chatID int64) {
-	leaderboard, err := ggRepo.GetGGLeaderboard(chatID)
+	year := GetCurrentYearInEST()
+	leaderboard, err := ggRepo.GetGGLeaderboard(chatID, year)
 	if err != nil {
 		log.Printf("Failed to fetch GG leaderboard for chat %d: %v", chatID, err)
 		return

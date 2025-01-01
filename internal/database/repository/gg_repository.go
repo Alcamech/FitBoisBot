@@ -30,9 +30,9 @@ func (r *GGRepository) CreateOrUpdateGGCount(userID, groupID int64, year string)
 	return r.DB.Save(&gg).Error
 }
 
-func (r *GGRepository) GetGGLeaderboard(groupID int64) ([]models.Gg, error) {
+func (r *GGRepository) GetGGLeaderboard(groupID int64, year string) ([]models.Gg, error) {
 	var leaderboard []models.Gg
-	err := r.DB.Where("group_id = ?", groupID).
+	err := r.DB.Where("group_id = ? AND year = ?", groupID, year).
 		Order("fast_gg_count DESC").
 		Find(&leaderboard).Error
 	return leaderboard, err

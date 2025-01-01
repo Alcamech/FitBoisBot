@@ -3,6 +3,7 @@ package bot
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -66,11 +67,10 @@ func formatFastGGLeaderboard(leaderboard []models.Gg) string {
 }
 
 func parseActivityMessage(msg *tgbotapi.Message) (string, string, string, string, error) {
-	// format "activity-MM-DD-YYYY"
+	// Expected format: "activity-MM-DD-YYYY"
 	parts := strings.Split(msg.Caption, "-")
-	if len(parts) < 4 {
-		fmt.Println("< 4")
-		return "", "", "", "", fmt.Errorf("invalid message format")
+	if len(parts) != 4 {
+		return "", "", "", "", fmt.Errorf("invalid message format, expected 'activity-MM-DD-YYYY'")
 	}
 
 	activity := parts[0]
@@ -78,5 +78,27 @@ func parseActivityMessage(msg *tgbotapi.Message) (string, string, string, string
 	day := parts[2]
 	year := parts[3]
 
+	if len(month) != 2 || !isNumeric(month) || atoi(month) < 1 || atoi(month) > 12 {
+		return "", "", "", "", fmt.Errorf("invalid month format, expected 'MM'")
+	}
+
+	if len(day) != 2 || !isNumeric(day) || atoi(day) < 1 || atoi(day) > 31 {
+		return "", "", "", "", fmt.Errorf("invalid day format, expected 'DD'")
+	}
+
+	if len(year) != 4 || !isNumeric(year) {
+		return "", "", "", "", fmt.Errorf("invalid year format, expected 'YYYY'")
+	}
+
 	return activity, month, day, year, nil
+}
+
+func isNumeric(s string) bool {
+	_, err := strconv.Atoi(s)
+	return err == nil
+}
+
+func atoi(s string) int {
+	value, _ := strconv.Atoi(s)
+	return value
 }
