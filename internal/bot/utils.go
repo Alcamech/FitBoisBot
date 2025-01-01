@@ -26,25 +26,16 @@ func isEdited(msg *tgbotapi.Message) bool {
 	return msg.EditDate != 0
 }
 
-func getTimeInEST() (time.Time, error) {
-	location, err := time.LoadLocation("America/New_York")
-	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to load timezone: %v", err)
-	}
-	return time.Now().In(location), nil
+func GetCurrentMonthInEST() string {
+	est := time.FixedZone("EST", -5*60*60) // Fixed offset for EST (UTC-5)
+	now := time.Now().In(est)
+	return now.Format("01") // MM format
 }
 
-func getCurrentMonthInEST() (string, error) {
-	now, err := getTimeInEST()
-	if err != nil {
-		return "", err
-	}
-	return now.Format("01"), nil // Returns MM
-}
-
-func getCurrentYear() string {
-	now, _ := getTimeInEST()
-	return now.Format("2006")
+func GetCurrentYearInEST() string {
+	est := time.FixedZone("EST", -5*60*60) // Fixed offset for EST (UTC-5)
+	now := time.Now().In(est)
+	return now.Format("2006") // YYYY format
 }
 
 func getUserFirstName(userID int64) string {

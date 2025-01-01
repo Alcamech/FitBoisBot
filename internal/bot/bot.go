@@ -139,7 +139,7 @@ func handleGG(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 		return
 	}
 
-	currentYear := getCurrentYear()
+	currentYear := GetCurrentYearInEST()
 	if err := ggRepo.CreateOrUpdateGGCount(msg.From.ID, chatID, currentYear); err != nil {
 		log.Printf("Failed to record GG: %v", err)
 		return
