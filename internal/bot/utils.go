@@ -39,6 +39,56 @@ func GetCurrentYearInEST() string {
 	return now.Format("2006") // YYYY format
 }
 
+func GetPreviousMonth(timezone string) (string, error) {
+	location, err := time.LoadLocation(timezone)
+	if err != nil {
+		log.Printf("Invalid timezone: %v", err)
+		return "", err
+	}
+	now := time.Now().In(location)
+	previousMonth := now.AddDate(0, -1, 0)
+	return previousMonth.Format("01"), nil // MM format
+}
+
+func GetCurrentMonth(timezone string) (string, error) {
+	location, err := time.LoadLocation(timezone)
+	if err != nil {
+		log.Printf("Invalid timezone: %v", err)
+		return "", err
+	}
+	now := time.Now().In(location)
+	return now.Format("01"), nil // MM format
+}
+
+func GetCurrentYear(timezone string) (string, error) {
+	location, err := time.LoadLocation(timezone)
+	if err != nil {
+		log.Printf("Invalid timezone: %v", err)
+		return "", err
+	}
+	now := time.Now().In(location)
+	return now.Format("2006"), nil // YYYY format
+}
+
+func convertToFullYear(year string) (string, error) {
+	if !isNumeric(year) {
+		return "", fmt.Errorf("invalid year format, expected 'YY' or 'YYYY'")
+	}
+
+	if len(year) == 2 {
+		currentYear := time.Now().Year()
+		century := currentYear / 100 * 100
+		fullYear := century + atoi(year)
+		return fmt.Sprintf("%d", fullYear), nil // Always assume the current century
+	}
+
+	if len(year) == 4 {
+		return year, nil
+	}
+
+	return "", fmt.Errorf("invalid year format, expected 'YY' or 'YYYY'")
+}
+
 func getUserFirstName(userID int64) string {
 	user, err := userRepo.FindByID(userID)
 	if err != nil {
@@ -66,11 +116,27 @@ func formatFastGGLeaderboard(leaderboard []models.Gg) string {
 	return builder.String()
 }
 
+func formatTokenLeaderboard(leaderboard []models.Token, year string) string {
+	if len(leaderboard) == 0 {
+		return fmt.Sprintf("No tokens awarded yet for %s! 🏆", year)
+	}
+
+	var builder strings.Builder
+	builder.WriteString(fmt.Sprintf("🏆 Token Leaderboard for %s 🏆\n", year))
+
+	for i, entry := range leaderboard {
+		user, _ := userRepo.FindByID(entry.UserID)
+		builder.WriteString(fmt.Sprintf("%d. %s - %d tokens\n", i+1, user.Name, entry.Balance))
+	}
+
+	return builder.String()
+}
+
 func parseActivityMessage(msg *tgbotapi.Message) (string, string, string, string, error) {
-	// Expected format: "activity-MM-DD-YYYY"
+	// Expected format: "activity-MM-DD-YYYY" or "activity-MM-DD-YY"
 	parts := strings.Split(msg.Caption, "-")
 	if len(parts) != 4 {
-		return "", "", "", "", fmt.Errorf("invalid message format, expected 'activity-MM-DD-YYYY'")
+		return "", "", "", "", fmt.Errorf("invalid message format, expected 'activity-MM-DD-YYYY' or 'activity-MM-DD-YY'")
 	}
 
 	activity := parts[0]
@@ -86,8 +152,9 @@ func parseActivityMessage(msg *tgbotapi.Message) (string, string, string, string
 		return "", "", "", "", fmt.Errorf("invalid day format, expected 'DD'")
 	}
 
-	if len(year) != 4 || !isNumeric(year) {
-		return "", "", "", "", fmt.Errorf("invalid year format, expected 'YYYY'")
+	year, err := convertToFullYear(year)
+	if err != nil {
+		return "", "", "", "", err
 	}
 
 	return activity, month, day, year, nil

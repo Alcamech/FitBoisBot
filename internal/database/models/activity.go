@@ -5,7 +5,9 @@ type Activity struct {
 	Month    string `gorm:"size 2"`
 	Day      string `gorm:"size 2"`
 	Year     string `gorm:"size 2"`
-	ID       int64  `gorm:"primaryKey;autoIncrement"`
-	UserID   int64  `gorm:"not null;index"`
+	User     User   `gorm:"foreignKey:UserID;references:ID"`
+	Group    Group  `gorm:"foreignKey:GroupID;references:ID"`
+	ID       int64  `gorm:"primaryKey"`
+	UserID   int64  `gorm:"not null"`
 	GroupID  int64  `gorm:"not null"`
 }

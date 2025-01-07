@@ -25,7 +25,12 @@ func InitDB() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	if err := DB.AutoMigrate(&models.User{}, &models.Activity{}, &models.Gg{}); err != nil {
+	if err := DB.AutoMigrate(
+		&models.User{},
+		&models.Activity{},
+		&models.Gg{},
+		&models.Group{},
+		&models.Token{}); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 

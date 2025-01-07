@@ -11,6 +11,12 @@ func sendText(bot *tgbotapi.BotAPI, chatID int64, message string) {
 	bot.Send(tgbotapi.NewMessage(chatID, message))
 }
 
+func sendMarkdownText(bot *tgbotapi.BotAPI, chatID int64, message string) {
+	msg := tgbotapi.NewMessage(chatID, message)
+	msg.ParseMode = "MarkdownV2"
+	bot.Send(msg)
+}
+
 func sendReply(bot *tgbotapi.BotAPI, chatID int64, message string, replyToMessageID int) {
 	msg := tgbotapi.NewMessage(chatID, message)
 	msg.ReplyToMessageID = replyToMessageID
@@ -18,8 +24,25 @@ func sendReply(bot *tgbotapi.BotAPI, chatID int64, message string, replyToMessag
 }
 
 func getActivityCountsMessage(chatID int64) (string, error) {
-	month := GetCurrentMonthInEST()
-	year := GetCurrentYearInEST()
+	group, err := groupRepo.GetGroupByID(chatID)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch group %d: %w", chatID, err)
+	}
+
+	timezone := group.Timezone
+	if timezone == "" {
+		timezone = "America/New_York"
+	}
+
+	month, err := GetCurrentMonth(timezone)
+	if err != nil {
+		return "", fmt.Errorf("failed to get current month for timezone %s: %w", timezone, err)
+	}
+
+	year, err := GetCurrentYear(timezone)
+	if err != nil {
+		return "", fmt.Errorf("failed to get current year for timezone %s: %w", timezone, err)
+	}
 
 	userIDs, err := activityRepo.GetUsersWithActivities(chatID)
 	if err != nil {
@@ -57,4 +80,12 @@ func formatActivityCounts(userCounts map[string]int64) string {
 	}
 
 	return strings.TrimSuffix(builder.String(), ", ")
+}
+
+func sendMonthlyAwardMessage(bot *tgbotapi.BotAPI, chatID int64, userName, month, year string, rewardAmount int) {
+	message := fmt.Sprintf(
+		"Month counts have been reset\n\nCongratulations ⭐️ %s ⭐️ for being the most active user for %s/%s 🏆\n\nHere's your reward. 💰 You've won %d FitBoi Tokens! 💰",
+		userName, month, year, rewardAmount,
+	)
+	sendText(bot, chatID, message)
 }

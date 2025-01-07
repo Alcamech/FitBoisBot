@@ -18,6 +18,8 @@ var (
 	userRepo     *repository.UserRepository
 	activityRepo *repository.ActivityRepository
 	ggRepo       *repository.GGRepository
+	groupRepo    *repository.GroupRepository
+	tokenRepo    *repository.TokenRepository
 )
 
 var ggStates = make(map[int64]*ggState)
@@ -53,6 +55,8 @@ func initializeRepositories() {
 	userRepo = &repository.UserRepository{DB: database.DB}
 	activityRepo = &repository.ActivityRepository{DB: database.DB}
 	ggRepo = &repository.GGRepository{DB: database.DB}
+	groupRepo = &repository.GroupRepository{DB: database.DB}
+	tokenRepo = &repository.TokenRepository{DB: database.DB}
 }
 
 func processUpdates(updates tgbotapi.UpdatesChannel) {
@@ -105,6 +109,10 @@ func handleCommand(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 		onHelp(bot, msg.Chat.ID)
 	case "fastgg":
 		onFastGG(bot, msg.Chat.ID)
+	case "tokens":
+		onTokens(bot, msg.Chat.ID)
+	case "timezone":
+		onSetTimezone(bot, msg)
 	}
 }
 
@@ -135,9 +143,9 @@ func handleGG(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 		return // GG is not available
 	}
 
-	if msg.From.ID == state.activityPosterID {
-		return
-	}
+	// if msg.From.ID == state.activityPosterID {
+	// 	return
+	// }
 
 	currentYear := GetCurrentYearInEST()
 	if err := ggRepo.CreateOrUpdateGGCount(msg.From.ID, chatID, currentYear); err != nil {

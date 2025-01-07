@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"fmt"
+
 	"github.com/Alcamech/FitBoisBot/internal/database/models"
 	"gorm.io/gorm"
 )
@@ -46,4 +48,27 @@ func (r *ActivityRepository) GetActivityCountByUserIdAndMonthAndYear(userID, gro
 		Where("user_id = ? AND group_id = ? AND month = ? AND year = ?", userID, groupID, month, year).
 		Count(&count).Error
 	return count, err
+}
+
+func (r *ActivityRepository) GetMostActiveUserForMonth(groupID int64, month, year string) (int64, int64, error) {
+	var result struct {
+		UserID int64
+		Count  int64
+	}
+	err := r.DB.Model(&models.Activity{}).
+		Select("user_id, COUNT(*) as count").
+		Where("group_id = ? AND month = ? AND year = ?", groupID, month, year).
+		Group("user_id").
+		Order("count DESC").
+		Limit(1).
+		Scan(&result).Error
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if result.UserID == 0 {
+		return 0, 0, fmt.Errorf("no activities found for group %d in %s/%s", groupID, month, year)
+	}
+
+	return result.UserID, result.Count, nil
 }
