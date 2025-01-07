@@ -3,6 +3,7 @@ package bot
 import (
 	"log"
 	"time"
+	_ "time/tzdata"
 )
 
 func ScheduleMonthlyTokenAwards() {
