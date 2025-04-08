@@ -1,44 +1,76 @@
 # FitBois Telegram Bot
 
-## TODO
-* Improve and update documentation
-* Update dependencies
-* Small refactor
-* TODOs in code
-* Break out methods 
-* document `/fastgg`
-* improve formatting of bot messages
-* Error handling
-* Write test
-* Create Changelog
-* Create Release Notes
-* ~~Overview of 2023~~
-* Intelligent Q/A with SQL data 
-* ~~Monthly Count~~
-* Monthly Check-Ins
-* Monthly rewards
-* Allow users to set timezone
-* Scale for other groups
-* Fit Boi of the Year Awards EOY
-* Logging
+Stay accountable. Get fit. Dominate the leaderboard.
 
-# Planned Features
+[**Launch the Bot**](https://t.me/FitBoisBot)
 
-### Bot command to show individual stats
+---
 
-`/stats` - should show the individual their personal stats that are being tracked
+## 📜 Current Commands
 
-* Activity count
-* count by month
-* count by activity type
-* fastest gg count
+Use `/help` in Telegram to see these:
 
-### Bot command to submit challenge completion [draft]
+- `/help` – Show available commands and usage.
+- `/fastgg` – Display the Fast GG leaderboard for your group.
+- `/tokens` – Display Fitboi Token balances.
+- `/timezone` – Set your group’s timezone (e.g., `/timezone America/New_York`).
 
-`/challenge` - should allow you to submit a challenge
+### 🗓️ Usage
 
-first optional parameter is `1=complete`
+Post activities with an image of your tracked workout and a caption using these formats:
 
-second parameter is wager amount 
+```
+activity-MM-DD-YYYY
+or
+activity-MM-DD-YY
+```
 
-message should be in the format of `/challenge 1 100`
+Be the first to reply `gg` to your friends
+
+---
+
+## 🛠️ Roadmap & TODOs
+
+### General Improvements
+
+- [ ] Improve and update documentation
+- [x] Update dependencies
+- [x] Small refactor
+- [x] TODOs in code
+- [x] Break out methods
+- [x] Improve formatting of bot messages
+- [x] Error handling
+- [x] Allow users to set timezone
+- [x] Scale for other groups
+- [x] Fit Boi of the Year Awards EOY
+- [ ] Write test
+- [ ] Create changelog
+- [ ] Create release notes
+- [ ] Improved logging
+- [ ] Monthly Check-Ins
+- [ ] Monthly rewards
+- [ ] Intelligent Q/A with SQL data
+
+---
+
+## 🧠 Planned Features
+
+### `/stats` – Personal Stats Summary
+
+Returns an individual’s activity summary:
+
+- Total activity count
+- Count by month
+- Count by activity type
+- Fastest GG count
+
+### `/challenge` – Challenge Completion (Draft)
+
+Submit a challenge attempt:
+
+```
+/challenge 1 100
+```
+
+- `1` = challenge complete (optional)
+- `100` = token wager amount
