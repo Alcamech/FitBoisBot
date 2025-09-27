@@ -8,7 +8,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/Alcamech/FitBoisBot/config"
-	"github.com/Alcamech/FitBoisBot/internal/database/models"
 )
 
 var DB *gorm.DB
@@ -25,14 +24,15 @@ func InitDB() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	if err := DB.AutoMigrate(
-		&models.User{},
-		&models.Activity{},
-		&models.Gg{},
-		&models.Group{},
-		&models.Token{}); err != nil {
-		log.Fatalf("Failed to migrate database: %v", err)
-	}
+	// AutoMigrate disabled for production - use manual migrations instead
+	// if err := DB.AutoMigrate(
+	// 	&models.User{},
+	// 	&models.Activity{},
+	// 	&models.Gg{},
+	// 	&models.Group{},
+	// 	&models.Token{}); err != nil {
+	// 	log.Fatalf("Failed to migrate database: %v", err)
+	// }
 
 	log.Println("Database connection established and schema migrated")
 }

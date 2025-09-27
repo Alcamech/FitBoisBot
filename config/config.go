@@ -21,6 +21,15 @@ var AppConfig Config
 func InitConfig() {
 	viper.AutomaticEnv()
 
+	// Explicitly bind environment variables
+	viper.BindEnv("TOKEN")
+	viper.BindEnv("DEBUG")
+	viper.BindEnv("DB_USERNAME")
+	viper.BindEnv("DB_PASSWORD")
+	viper.BindEnv("DB_HOST")
+	viper.BindEnv("DB_PORT")
+	viper.BindEnv("DB_NAME")
+
 	// Read .env file if it exists
 	viper.SetConfigName(".env")
 	viper.SetConfigType("env")
