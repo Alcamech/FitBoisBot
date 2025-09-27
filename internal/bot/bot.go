@@ -1,28 +1,27 @@
 package bot
 
 import (
-	"log"
+	"fmt"
+	"log/slog"
 
 	"github.com/Alcamech/FitBoisBot/config"
+	"github.com/Alcamech/FitBoisBot/internal/constants"
 	"github.com/Alcamech/FitBoisBot/internal/database"
 	"github.com/Alcamech/FitBoisBot/internal/database/models"
-	"github.com/Alcamech/FitBoisBot/internal/database/repository"
+	"github.com/Alcamech/FitBoisBot/internal/store"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-var (
-	lastMessageUserID    int64
-	isFastestGGAvailable bool
-
-	bot          *tgbotapi.BotAPI
-	userRepo     *repository.UserRepository
-	activityRepo *repository.ActivityRepository
-	ggRepo       *repository.GGRepository
-	groupRepo    *repository.GroupRepository
-	tokenRepo    *repository.TokenRepository
-)
-
-var ggStates = make(map[int64]*ggState)
+// BotService encapsulates all bot dependencies and state
+type BotService struct {
+	bot           *tgbotapi.BotAPI
+	userStore     *store.UserStore
+	activityStore *store.ActivityStore
+	ggStore       *store.GGStore
+	groupStore    *store.GroupStore
+	tokenStore    *store.TokenStore
+	ggStates      map[int64]*ggState
+}
 
 type ggState struct {
 	isFastestGGAvailable bool
@@ -30,39 +29,49 @@ type ggState struct {
 }
 
 func BotLoop() {
-	log.Println("FitBoisBot Started")
-	var err error
-	bot, err = tgbotapi.NewBotAPI(config.AppConfig.Telegram.DevToken)
+	slog.Info("FitBoisBot started")
+	
+	service, err := NewBotService()
 	if err != nil {
-		log.Panicf("Failed to initialize bot: %v", err)
+		slog.Error("Failed to initialize bot service", "error", err)
+		panic(err)
 	}
 
-	bot.Debug = config.AppConfig.Telegram.Debug
-
-	log.Printf("Authorized on account %s", bot.Self.UserName)
-	initializeRepositories()
+	slog.Info("Bot authorized", "username", service.bot.Self.UserName)
 
 	botConfig := tgbotapi.NewUpdate(0)
 	botConfig.AllowedUpdates = []string{"message", "edited_message"}
 	botConfig.Timeout = 60
 
-	updates := bot.GetUpdatesChan(botConfig)
+	updates := service.bot.GetUpdatesChan(botConfig)
 
-	processUpdates(updates)
+	service.processUpdates(updates)
 }
 
-func initializeRepositories() {
-	userRepo = &repository.UserRepository{DB: database.DB}
-	activityRepo = &repository.ActivityRepository{DB: database.DB}
-	ggRepo = &repository.GGRepository{DB: database.DB}
-	groupRepo = &repository.GroupRepository{DB: database.DB}
-	tokenRepo = &repository.TokenRepository{DB: database.DB}
+// NewBotService creates a new bot service with initialized repositories
+func NewBotService() (*BotService, error) {
+	bot, err := tgbotapi.NewBotAPI(config.AppConfig.Token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize bot API: %w", err)
+	}
+
+	bot.Debug = config.AppConfig.Debug
+
+	return &BotService{
+		bot:           bot,
+		userStore:     store.NewUserStore(database.DB),
+		activityStore: store.NewActivityStore(database.DB),
+		ggStore:       store.NewGGStore(database.DB),
+		groupStore:    store.NewGroupStore(database.DB),
+		tokenStore:    store.NewTokenStore(database.DB),
+		ggStates:      make(map[int64]*ggState),
+	}, nil
 }
 
-func processUpdates(updates tgbotapi.UpdatesChannel) {
+func (s *BotService) processUpdates(updates tgbotapi.UpdatesChannel) {
 	for update := range updates {
 		if msg := extractMessage(update); msg != nil {
-			processMessage(bot, msg)
+			s.processMessage(msg)
 		}
 	}
 }
@@ -77,82 +86,109 @@ func extractMessage(update tgbotapi.Update) *tgbotapi.Message {
 	return nil
 }
 
-func processMessage(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
+func (s *BotService) processMessage(msg *tgbotapi.Message) {
 	chatID := msg.Chat.ID
 	userID := msg.From.ID
 
-	user, err := userRepo.GetOrCreateUser(userID, msg.From.FirstName, chatID)
+	user, err := s.userStore.GetOrCreateUser(userID, msg.From.FirstName, chatID)
 	if err != nil {
-		log.Printf("Error retrieving user: %v", err)
+		slog.Error("Failed to retrieve user", "error", err, "user_id", userID, "chat_id", chatID)
 		return
 	}
 
 	switch {
 	case msg.IsCommand():
-		handleCommand(bot, msg)
+		s.handleCommand(msg)
 	case isPhoto(msg):
-		// sendText(bot, chatID, "Photo detected.")
 	case isActivity(msg):
-		handleActivity(bot, msg, user)
+		s.handleActivity(msg, user)
 	case isGG(msg.Text):
-		handleGG(bot, msg)
+		s.handleGG(msg)
 	default:
-		// sendText(bot, chatID, "Message not recognized.")
 	}
 
-	log.Printf("Group: %d, User: %s, Message: %s", chatID, user.ToString(), msg.Text)
+	slog.Info("Message processed", "chat_id", chatID, "user", user.ToString(), "message", msg.Text)
 }
 
-func handleCommand(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
+func (s *BotService) handleCommand(msg *tgbotapi.Message) {
 	switch msg.Command() {
 	case "help":
-		onHelp(bot, msg.Chat.ID)
+		s.onHelp(msg.Chat.ID)
 	case "fastgg":
-		onFastGG(bot, msg.Chat.ID)
+		s.onFastGG(msg.Chat.ID)
 	case "tokens":
-		onTokens(bot, msg.Chat.ID)
+		s.onTokens(msg.Chat.ID)
 	case "timezone":
-		onSetTimezone(bot, msg)
+		s.onSetTimezone(msg)
 	}
 }
 
-func handleActivity(bot *tgbotapi.BotAPI, msg *tgbotapi.Message, user *models.User) {
+func (s *BotService) handleActivity(msg *tgbotapi.Message, user *models.User) {
 	chatID := msg.Chat.ID
 
-	ggStates[chatID] = &ggState{
+	s.ggStates[chatID] = &ggState{
 		isFastestGGAvailable: true,
 		activityPosterID:     user.ID,
 	}
 
-	if err := onActivityPost(msg, user); err != nil {
-		log.Printf("Error posting activity: %v", err)
+	if err := s.onActivityPost(msg, user); err != nil {
+		slog.Error("Failed to post activity", "error", err)
 		return
 	}
 
-	if activityCountsMessage, err := getActivityCountsMessage(chatID); err == nil {
-		sendText(bot, chatID, activityCountsMessage)
+	if activityCountsMessage, err := s.getActivityCountsMessage(chatID); err == nil {
+		s.sendHTMLText(chatID, activityCountsMessage)
 	} else {
-		log.Printf("Error retrieving activity counts: %v", err)
+		slog.Error("Failed to retrieve activity counts", "error", err)
 	}
 }
 
-func handleGG(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
+func (s *BotService) handleGG(msg *tgbotapi.Message) {
 	chatID := msg.Chat.ID
-	state, exists := ggStates[chatID]
+	state, exists := s.ggStates[chatID]
 	if !exists || !state.isFastestGGAvailable {
 		return // GG is not available
 	}
 
-	// if msg.From.ID == state.activityPosterID {
-	// 	return
-	// }
+	// Users cannot GG their own activity
+	if msg.From.ID == state.activityPosterID {
+		return // Ignore self-GG attempts
+	}
 
-	currentYear := GetCurrentYearInEST()
-	if err := ggRepo.CreateOrUpdateGGCount(msg.From.ID, chatID, currentYear); err != nil {
-		log.Printf("Failed to record GG: %v", err)
+	// Get group timezone for proper year calculation
+	group, err := s.groupStore.GetByID(chatID)
+	if err != nil {
+		slog.Error("Failed to fetch group for GG", "error", err, "chat_id", chatID)
 		return
 	}
 
-	sendReply(bot, chatID, "Fastest gg in the west", msg.MessageID)
+	timezone := group.Timezone
+	if timezone == "" {
+		timezone = constants.DefaultTimezone
+	}
+
+	currentYear, err := GetCurrentYear(timezone)
+	if err != nil {
+		slog.Error("Failed to get current year for GG", "error", err, "timezone", timezone)
+		return
+	}
+
+	if err := s.ggStore.CreateOrUpdateCount(msg.From.ID, chatID, currentYear); err != nil {
+		slog.Error("Failed to record GG", "error", err)
+		return
+	}
+
+	s.sendReply(chatID, constants.MsgFastestGG, msg.MessageID)
 	state.isFastestGGAvailable = false
+}
+
+// GetAllGroups returns all groups from the database
+func (s *BotService) GetAllGroups() ([]models.Group, error) {
+	return s.groupStore.GetAll()
+}
+
+// SendAnnouncement sends a message to a specific group
+func (s *BotService) SendAnnouncement(groupID int64, message string) error {
+	_, err := s.bot.Send(tgbotapi.NewMessage(groupID, message))
+	return err
 }

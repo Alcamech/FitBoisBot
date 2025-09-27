@@ -14,7 +14,7 @@ import (
 var DB *gorm.DB
 
 func InitDB() {
-	cfg := config.AppConfig.Database
+	cfg := config.AppConfig
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
 		cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Name,
 	)

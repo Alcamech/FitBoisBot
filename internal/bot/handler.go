@@ -1,121 +1,130 @@
 package bot
 
 import (
-	"log"
-	"time"
+	"fmt"
+	"log/slog"
+	"strings"
 
+	"github.com/Alcamech/FitBoisBot/internal/constants"
 	"github.com/Alcamech/FitBoisBot/internal/database/models"
+	"github.com/Alcamech/FitBoisBot/internal/version"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func onFastGG(bot *tgbotapi.BotAPI, chatID int64) {
-	group, err := groupRepo.GetGroupByID(chatID)
+func (s *BotService) onFastGG(chatID int64) {
+	group, err := s.groupStore.GetByID(chatID)
 	if err != nil {
-		log.Printf("Failed to fetch group %d: %v", chatID, err)
-		sendText(bot, chatID, "Failed to fetch group timezone. Please set the timezone using /settimezone.")
+		slog.Error("Failed to fetch group", "error", err, "chat_id", chatID)
+		s.sendText(chatID, constants.MsgGroupTimezoneError)
 		return
 	}
 
 	timezone := group.Timezone
 	if timezone == "" {
-		timezone = "America/New_York"
+		timezone = constants.DefaultTimezone
 	}
 
 	year, err := GetCurrentYear(timezone)
 	if err != nil {
-		log.Printf("Failed to get current year for timezone %s: %v", timezone, err)
-		sendText(bot, chatID, "Invalid timezone set for this group. Please update the timezone using /settimezone.")
+		slog.Error("Failed to get current year", "error", err, "timezone", timezone)
+		s.sendText(chatID, constants.MsgInvalidTimezone)
 		return
 	}
 
-	leaderboard, err := ggRepo.GetGGLeaderboard(chatID, year)
+	leaderboard, err := s.ggStore.GetLeaderboard(chatID, year)
 	if err != nil {
-		log.Printf("Failed to fetch GG leaderboard for chat %d: %v", chatID, err)
+		slog.Error("Failed to fetch GG leaderboard", "error", err, "chat_id", chatID)
 		return
 	}
 
-	message := formatFastGGLeaderboard(leaderboard)
-	sendText(bot, chatID, message)
+	message := s.formatFastGGLeaderboard(leaderboard)
+	s.sendHTMLText(chatID, message)
 }
 
-func onHelp(bot *tgbotapi.BotAPI, chatID int64) {
-	message := "*🏋️ Welcome to the FitBois Bot\\!*\n" +
-		"Here are the available commands:\n\n" +
-		"*📜 Commands:*\n" +
-		"  • `/help` \\- Show this help message\\.\n" +
-		"  • `/fastgg` \\- Display the Fast GG leaderboard your group\\.\n" +
-		"  • `/tokens` \\- Display Fitboi Token balances\\.\n" +
-		"  • `/timezone` \\- Set the timezone for your group \\(e\\.g\\., `/timezone America/New_York`\\)\\.\n\n" +
-		"*🗓️ Activity Format:*\n" +
-		"Post activities in the format:\n" +
-		"`activity\\-MM\\-DD\\-YYYY` or `activity\\-MM\\-DD\\-YY`\\.\n\n" +
-		"*🚑 Support:*\n" +
-		"For any issues, reach out to our support team\\.\n\n" +
-		"💪 *Stay fit and keep posting your progress\\!*"
-
-	sendMarkdownText(bot, chatID, message)
+func (s *BotService) onHelp(chatID int64) {
+	versionInfo := strings.ReplaceAll(version.GetVersionInfo(), ".", "\\.")
+	helpText := fmt.Sprintf(constants.MsgHelpText, versionInfo)
+	s.sendMarkdownText(chatID, helpText)
 }
 
-func onSetTimezone(bot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
+func (s *BotService) onSetTimezone(msg *tgbotapi.Message) {
 	args := msg.CommandArguments()
+
+	// No arguments - show current timezone
 	if args == "" {
-		sendText(bot, msg.Chat.ID, "Please specify a timezone. Example: /timezone America/New_York")
+		s.showCurrentTimezone(msg.Chat.ID)
 		return
 	}
 
-	_, err := time.LoadLocation(args) // Validate timezone
+	// Arguments provided - set new timezone
+	if err := validateTimezone(args); err != nil {
+		s.sendText(msg.Chat.ID, constants.MsgTimezoneInvalid)
+		return
+	}
+
+	err := s.groupStore.SetTimezone(msg.Chat.ID, args)
 	if err != nil {
-		sendText(bot, msg.Chat.ID, "Invalid timezone. Please use a valid IANA timezone. Example: /timezone America/New_York")
+		slog.Error("Failed to set timezone", "error", err, "chat_id", msg.Chat.ID)
+		s.sendText(msg.Chat.ID, constants.MsgTimezoneSetFailed)
 		return
 	}
 
-	err = groupRepo.SetGroupTimezone(msg.Chat.ID, args)
-	if err != nil {
-		log.Printf("Failed to set timezone for chat %d: %v", msg.Chat.ID, err)
-		sendText(bot, msg.Chat.ID, "Failed to set timezone. Please try again.")
-		return
-	}
-
-	sendText(bot, msg.Chat.ID, "Timezone updated successfully to "+args)
+	s.sendText(msg.Chat.ID, constants.MsgTimezoneSetSuccess+args)
 }
 
-func onTokens(bot *tgbotapi.BotAPI, chatID int64) {
-	group, err := groupRepo.GetGroupByID(chatID)
+func (s *BotService) showCurrentTimezone(chatID int64) {
+	group, err := s.groupStore.GetByID(chatID)
 	if err != nil {
-		log.Printf("Failed to fetch group %d: %v", chatID, err)
-		sendText(bot, chatID, "Failed to fetch group timezone. Please set the timezone using /settimezone.")
+		slog.Error("Failed to fetch group", "error", err, "chat_id", chatID)
+		s.sendText(chatID, constants.MsgGroupTimezoneError)
 		return
 	}
 
 	timezone := group.Timezone
 	if timezone == "" {
-		timezone = "America/New_York"
+		timezone = constants.DefaultTimezone
+	}
+
+	s.sendText(chatID, fmt.Sprintf("Current timezone: %s", timezone))
+}
+
+func (s *BotService) onTokens(chatID int64) {
+	group, err := s.groupStore.GetByID(chatID)
+	if err != nil {
+		slog.Error("Failed to fetch group", "error", err, "chat_id", chatID)
+		s.sendText(chatID, constants.MsgGroupTimezoneError)
+		return
+	}
+
+	timezone := group.Timezone
+	if timezone == "" {
+		timezone = constants.DefaultTimezone
 	}
 
 	year, err := GetCurrentYear(timezone)
 	if err != nil {
-		log.Printf("Failed to get current year for timezone %s: %v", timezone, err)
-		sendText(bot, chatID, "Invalid timezone set for this group. Please update the timezone using /settimezone.")
+		slog.Error("Failed to get current year", "error", err, "timezone", timezone)
+		s.sendText(chatID, constants.MsgInvalidTimezone)
 		return
 	}
 
-	leaderboard, err := tokenRepo.GetYearlyLeaderboard(chatID, year)
+	leaderboard, err := s.tokenStore.GetYearlyLeaderboard(chatID, year)
 	if err != nil {
-		log.Printf("Failed to fetch leaderboard for group %d: %v", chatID, err)
-		sendText(bot, chatID, "Failed to fetch leaderboard. Please try again later.")
+		slog.Error("Failed to fetch leaderboard", "error", err, "chat_id", chatID)
+		s.sendText(chatID, constants.MsgLeaderboardFailed)
 		return
 	}
 
-	message := formatTokenLeaderboard(leaderboard, year)
-	sendText(bot, chatID, message)
+	message := s.formatTokenLeaderboard(leaderboard)
+	s.sendHTMLText(chatID, message)
 }
 
-func onActivityPost(msg *tgbotapi.Message, user *models.User) error {
+func (s *BotService) onActivityPost(msg *tgbotapi.Message, user *models.User) error {
 	activity, month, day, year, err := parseActivityMessage(msg)
 	if err != nil {
-		sendReply(bot, msg.Chat.ID, "Wrong activity format. use activity-MM-DD-YYYY or activity-MM-DD-YY", msg.MessageID)
-		return err
+		s.sendReply(msg.Chat.ID, constants.MsgActivityFormatError, msg.MessageID)
+		return fmt.Errorf("failed to parse activity message: %w", err)
 	}
 
-	return activityRepo.CreateActivityRecord(user.ID, msg.Chat.ID, activity, month, day, year)
+	return s.activityStore.CreateOrUpdateRecord(user.ID, msg.Chat.ID, msg.MessageID, activity, month, day, year)
 }

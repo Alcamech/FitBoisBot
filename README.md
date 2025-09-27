@@ -1,76 +1,52 @@
-# FitBois Telegram Bot
+# FitBoisBot
 
-Stay accountable. Get fit. Dominate the leaderboard.
+Telegram bot for fitness accountability with activity tracking, GG competition, and token rewards.
 
-[**Launch the Bot**](https://t.me/FitBoisBot)
+## Features
 
----
+- **Activity Tracking**: Post `activity-MM-DD-YYYY` format activities
+- **GG Competition**: First to reply `gg` earns fastest GG points  
+- **Token Rewards**: Monthly rewards for active users
+- **Multi-timezone**: Group-specific timezone support
+- **Leaderboards**: Activity counts, GG rankings, token balances
 
-## 📜 Current Commands
+## Commands
 
-Use `/help` in Telegram to see these:
+- `/help` - Show bot info and version
+- `/fastgg` - Display fastest GG leaderboard  
+- `/tokens` - Show token leaderboard
+- `/timezone [zone]` - View/set group timezone
 
-- `/help` – Show available commands and usage.
-- `/fastgg` – Display the Fast GG leaderboard for your group.
-- `/tokens` – Display Fitboi Token balances.
-- `/timezone` – Set your group’s timezone (e.g., `/timezone America/New_York`).
+## Quick Start
 
-### 🗓️ Usage
-
-Post activities with an image of your tracked workout and a caption using these formats:
-
-```
-activity-MM-DD-YYYY
-or
-activity-MM-DD-YY
-```
-
-Be the first to reply `gg` to your friends
-
----
-
-## 🛠️ Roadmap & TODOs
-
-### General Improvements
-
-- [ ] Improve and update documentation
-- [x] Update dependencies
-- [x] Small refactor
-- [x] TODOs in code
-- [x] Break out methods
-- [x] Improve formatting of bot messages
-- [x] Error handling
-- [x] Allow users to set timezone
-- [x] Scale for other groups
-- [x] Fit Boi of the Year Awards EOY
-- [ ] Write test
-- [ ] Create changelog
-- [ ] Create release notes
-- [ ] Improved logging
-- [ ] Monthly Check-Ins
-- [ ] Monthly rewards
-- [ ] Intelligent Q/A with SQL data
-
----
-
-## 🧠 Planned Features
-
-### `/stats` – Personal Stats Summary
-
-Returns an individual’s activity summary:
-
-- Total activity count
-- Count by month
-- Count by activity type
-- Fastest GG count
-
-### `/challenge` – Challenge Completion (Draft)
-
-Submit a challenge attempt:
-
-```
-/challenge 1 100
+```bash
+cp .env.example .env    # Add your TOKEN
+make db-up             # Start database
+make db-seed           # Add test data (optional)
+make dev               # Run bot
 ```
 
-- `1` = challenge complete (optional)
-- `100` = token wager amount
+## CLI Commands
+
+```bash
+make build             # Build binary
+./bin/fitboisbot serve # Start bot server
+
+# Admin announcements
+./bin/fitboisbot announce "Message"
+./bin/fitboisbot announce --file msg.md
+./bin/fitboisbot announce --group -123 "Group message"
+
+./bin/fitboisbot version # Show version info
+```
+
+## Make Commands
+
+```bash
+make help      # Show all commands
+make dev       # Development mode
+make test      # Run tests  
+make db-up     # Start database
+make db-seed   # Insert mock data
+make db-login  # Database console
+```

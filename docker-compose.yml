@@ -1,6 +1,7 @@
 services:
-  mysql_db:
+  fitboisbot-db:
     image: "mariadb:latest"
+    container_name: fitboisbot-db
     restart: always
     ports:
       - "3306:3306"

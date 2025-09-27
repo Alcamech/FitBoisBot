@@ -2,56 +2,46 @@ package config
 
 import (
 	"log"
-	"strings"
 
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Database struct {
-		Username string `mapstructure:"username"`
-		Password string `mapstructure:"password"`
-		Host     string `mapstructure:"host"`
-		Port     string `mapstructure:"port"`
-		Name     string `mapstructure:"name"`
-	}
-
-	Telegram struct {
-		DevToken  string `mapstructure:"dev-token"`
-		QaToken   string `mapstructure:"qa-token"`
-		ProdToken string `mapstructure:"prod-token"`
-		Debug     bool   `mapstructure:"debug-mode"`
-	}
+	Username string `mapstructure:"DB_USERNAME"`
+	Password string `mapstructure:"DB_PASSWORD"`
+	Host     string `mapstructure:"DB_HOST"`
+	Port     string `mapstructure:"DB_PORT"`
+	Name     string `mapstructure:"DB_NAME"`
+	Token    string `mapstructure:"TOKEN"`
+	Debug    bool   `mapstructure:"DEBUG"`
 }
 
 var AppConfig Config
 
 func InitConfig() {
 	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.SetEnvPrefix("fitbois")
 
-	viper.BindEnv("database.username", "FITBOIS_DATABASE_USERNAME")
-	viper.BindEnv("database.password", "FITBOIS_DATABASE_PASSWORD")
-	viper.BindEnv("database.host", "FITBOIS_DATABASE_HOST")
-	viper.BindEnv("database.port", "FITBOIS_DATABASE_PORT")
-	viper.BindEnv("database.name", "FITBOIS_DATABASE_NAME")
-	viper.BindEnv("telegram.dev-token", "FITBOIS_TELEGRAM_DEV_TOKEN")
-	viper.BindEnv("telegram.debug-mode", "FITBOIS_TELEGRAM_DEBUG_MODE")
-
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
+	// Read .env file if it exists
+	viper.SetConfigName(".env")
+	viper.SetConfigType("env")
 	viper.AddConfigPath(".")
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Printf("Config file not found or not used: %v", err)
+		log.Printf("No .env file found, using environment variables and defaults: %v", err)
+	} else {
+		log.Printf("Loaded .env file: %s", viper.ConfigFileUsed())
 	}
 
-	viper.SetDefault("telegram.debug-mode", false)
+	viper.SetDefault("DEBUG", false)
 
 	if err := viper.Unmarshal(&AppConfig); err != nil {
 		log.Fatalf("Unable to decode into struct: %v", err)
 	}
 
-	log.Printf("Loaded Config: %+v", AppConfig)
+	// Validate required configuration
+	if AppConfig.Token == "" {
+		log.Fatalf("Telegram token is required (set TOKEN environment variable)")
+	}
+
+	log.Printf("Configuration loaded successfully")
 }
