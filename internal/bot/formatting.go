@@ -3,6 +3,7 @@ package bot
 import (
 	"fmt"
 	"log/slog"
+	"sort"
 	"strings"
 
 	"github.com/Alcamech/FitBoisBot/internal/constants"
@@ -64,12 +65,28 @@ func formatActivityCounts(userCounts map[string]int64) string {
 		return constants.MsgNoActivitiesRecorded
 	}
 
+	// Convert map to slice for sorting
+	type userCount struct {
+		name  string
+		count int64
+	}
+
+	entries := make([]userCount, 0, len(userCounts))
+	for name, count := range userCounts {
+		entries = append(entries, userCount{name: name, count: count})
+	}
+
+	// Sort by count in descending order
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].count > entries[j].count
+	})
+
 	var builder strings.Builder
 	builder.WriteString("📊 <b>Monthly Activity Leaderboard</b>\n\n")
 
-	// Simple clean format
-	for name, count := range userCounts {
-		builder.WriteString(fmt.Sprintf("%s: <b>%d</b>\n", name, count))
+	// Simple clean format with sorted entries
+	for _, entry := range entries {
+		builder.WriteString(fmt.Sprintf("%s: <b>%d</b>\n", entry.name, entry.count))
 	}
 
 	return builder.String()
