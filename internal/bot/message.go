@@ -89,7 +89,32 @@ func (s *BotService) getActivityCountsMessage(chatID int64) (string, error) {
 }
 
 
-func (s *BotService) sendMonthlyAwardMessage(chatID int64, userName, month, year string, rewardAmount int) {
-	message := fmt.Sprintf(constants.MonthlyAwardTemplate, userName, month, year, rewardAmount)
+func (s *BotService) sendMonthlyAwardMessage(chatID int64, winnerNames []string, month, year string, rewardPerUser, numWinners int, activityCount int64) {
+	var message string
+
+	if numWinners == 1 {
+		message = fmt.Sprintf(constants.MonthlyAwardTemplate, winnerNames[0], month, year, rewardPerUser)
+	} else {
+		// Join winner names with commas and "and" for the last name
+		var namesStr string
+		if numWinners == 2 {
+			namesStr = winnerNames[0] + " and " + winnerNames[1]
+		} else {
+			namesStr = ""
+			for i, name := range winnerNames {
+				if i == numWinners-1 {
+					namesStr += "and " + name
+				} else if i == numWinners-2 {
+					namesStr += name + " "
+				} else {
+					namesStr += name + ", "
+				}
+			}
+		}
+
+		totalReward := rewardPerUser * numWinners
+		message = fmt.Sprintf(constants.MonthlyAwardTieTemplate, namesStr, month, year, activityCount, totalReward, numWinners, rewardPerUser)
+	}
+
 	s.sendText(chatID, message)
 }

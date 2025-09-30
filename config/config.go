@@ -1,7 +1,7 @@
 package config
 
 import (
-	"log"
+	"log/slog"
 
 	"github.com/spf13/viper"
 )
@@ -36,21 +36,23 @@ func InitConfig() {
 	viper.AddConfigPath(".")
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Printf("No .env file found, using environment variables and defaults: %v", err)
+		slog.Info("No .env file found, using environment variables and defaults", "error", err)
 	} else {
-		log.Printf("Loaded .env file: %s", viper.ConfigFileUsed())
+		slog.Info("Loaded .env file", "file", viper.ConfigFileUsed())
 	}
 
 	viper.SetDefault("DEBUG", false)
 
 	if err := viper.Unmarshal(&AppConfig); err != nil {
-		log.Fatalf("Unable to decode into struct: %v", err)
+		slog.Error("Unable to decode into struct", "error", err)
+		panic(err)
 	}
 
 	// Validate required configuration
 	if AppConfig.Token == "" {
-		log.Fatalf("Telegram token is required (set TOKEN environment variable)")
+		slog.Error("Telegram token is required (set TOKEN environment variable)")
+		panic("missing required TOKEN environment variable")
 	}
 
-	log.Printf("Configuration loaded successfully")
+	slog.Info("Configuration loaded successfully")
 }

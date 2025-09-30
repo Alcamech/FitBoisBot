@@ -76,26 +76,36 @@ func (s *ActivityStore) GetCountByUserMonthYear(userID, groupID int64, month, ye
 	return count, err
 }
 
-// GetMostActiveUserForMonth returns the most active user for a specific month and year.
-func (s *ActivityStore) GetMostActiveUserForMonth(groupID int64, month, year string) (int64, int64, error) {
-	var result struct {
-		UserID int64
-		Count  int64
-	}
+// GetMostActiveUsersForMonth returns all users tied for the highest activity count for a specific month and year.
+func (s *ActivityStore) GetMostActiveUsersForMonth(groupID int64, month, year string) ([]int64, int64, error) {
+	// First, get the maximum activity count
+	var maxCount int64
 	err := s.db.Model(&models.Activity{}).
-		Select("user_id, COUNT(*) as count").
+		Select("COUNT(*) as count").
 		Where("group_id = ? AND month = ? AND year = ?", groupID, month, year).
 		Group("user_id").
 		Order("count DESC").
 		Limit(1).
-		Scan(&result).Error
+		Scan(&maxCount).Error
 	if err != nil {
-		return 0, 0, err
+		return nil, 0, err
 	}
 
-	if result.UserID == 0 {
-		return 0, 0, fmt.Errorf("no activities found for group %d in %s/%s", groupID, month, year)
+	if maxCount == 0 {
+		return nil, 0, fmt.Errorf("no activities found for group %d in %s/%s", groupID, month, year)
 	}
 
-	return result.UserID, result.Count, nil
+	// Now get all users with that maximum count
+	var userIDs []int64
+	err = s.db.Model(&models.Activity{}).
+		Select("user_id").
+		Where("group_id = ? AND month = ? AND year = ?", groupID, month, year).
+		Group("user_id").
+		Having("COUNT(*) = ?", maxCount).
+		Pluck("user_id", &userIDs).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return userIDs, maxCount, nil
 }

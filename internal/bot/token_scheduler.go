@@ -40,26 +40,39 @@ func (s *BotService) processMonthlyTokenAwards() {
 		activityMonth := activityTime.Format("01")  // MM format
 		activityYear := activityTime.Format("2006") // YYYY format
 
-		userID, _, err := s.activityStore.GetMostActiveUserForMonth(group.ID, activityMonth, activityYear)
+		userIDs, activityCount, err := s.activityStore.GetMostActiveUsersForMonth(group.ID, activityMonth, activityYear)
 		if err != nil {
 			slog.Info("No activities found for group", "group_id", group.ID, "month", activityMonth, "year", activityYear)
 			continue
 		}
 
 		currentYear := now.Format("2006")
-		rewardAmount := constants.MonthlyRewardAmount
-		err = s.tokenStore.IncrementTokens(userID, group.ID, currentYear, rewardAmount)
-		if err != nil {
-			slog.Error("Failed to award tokens", "error", err, "user_id", userID, "group_id", group.ID)
-			continue
+		totalRewardAmount := constants.MonthlyRewardAmount
+		numWinners := len(userIDs)
+
+		var rewardPerUser int
+		if numWinners == 1 {
+			rewardPerUser = totalRewardAmount
+		} else {
+			rewardPerUser = totalRewardAmount / numWinners
 		}
 
-		user, err := s.userStore.FindByID(userID)
-		if err != nil {
-			slog.Error("Failed to fetch user", "error", err, "user_id", userID, "group_id", group.ID)
-			continue
+		var winnerNames []string
+		for _, userID := range userIDs {
+			err = s.tokenStore.IncrementTokens(userID, group.ID, currentYear, rewardPerUser)
+			if err != nil {
+				slog.Error("Failed to award tokens", "error", err, "user_id", userID, "group_id", group.ID)
+				continue
+			}
+
+			user, err := s.userStore.FindByID(userID)
+			if err != nil {
+				slog.Error("Failed to fetch user", "error", err, "user_id", userID, "group_id", group.ID)
+				continue
+			}
+			winnerNames = append(winnerNames, user.Name)
 		}
 
-		s.sendMonthlyAwardMessage(group.ID, user.Name, activityMonth, activityYear, rewardAmount)
+		s.sendMonthlyAwardMessage(group.ID, winnerNames, activityMonth, activityYear, rewardPerUser, numWinners, activityCount)
 	}
 }
