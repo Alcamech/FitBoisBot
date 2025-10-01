@@ -39,10 +39,9 @@ __%s__`
 
 // Template strings for dynamic messages
 const (
-	MonthlyAwardTemplate     = "Month counts have been reset\n\nCongratulations ⭐️ %s ⭐️ for being the most active user for %s/%s 🏆\n\nHere's your reward. 💰 You've won %d FitBoi Tokens! 💰"
-	MonthlyAwardTieTemplate  = "Month counts have been reset\n\nCongratulations ⭐️ %s ⭐️ for tying as the most active users for %s/%s with %d activities each! 🏆\n\nThe %d FitBoi Token reward has been split %d ways. 💰 You've each won %d FitBoi Tokens! 💰"
+	MonthlyAwardTemplate     = "Monthly counts have been reset\n\nCongratulations ⭐️ %s ⭐️ for being the most active user for %s/%s 🏆\n\nHere's your reward. 💰 You've won %d FitBoi Tokens! 💰"
+	MonthlyAwardTieTemplate  = "Monthly counts have been reset\n\nCongratulations ⭐️ %s ⭐️ for tying as the most active users for %s/%s with %d activities each! 🏆\n\nThe %d FitBoi Token reward has been split %d ways. 💰 You've each won %d FitBoi Tokens! 💰"
 	TokenLeaderboardTemplate = "🏆 Token Leaderboard for %s 🏆\n"
 	NoTokensTemplate         = "No tokens awarded yet ! 🏆"
 	FastGGLeaderboardPrefix  = "Fastest GGs 😎 "
 )
-
