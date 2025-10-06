@@ -119,12 +119,26 @@ func (s *BotService) onTokens(chatID int64) {
 	s.sendHTMLText(chatID, message)
 }
 
-func (s *BotService) onActivityPost(msg *tgbotapi.Message, user *models.User) error {
-	activity, month, day, year, err := parseActivityMessage(msg)
+func (s *BotService) onActivityPost(msg *tgbotapi.Message, user *models.User) (bool, error) {
+	post, err := parseActivityMessage(msg)
 	if err != nil {
 		s.sendReply(msg.Chat.ID, constants.MsgActivityFormatError, msg.MessageID)
-		return fmt.Errorf("failed to parse activity message: %w", err)
+		return false, fmt.Errorf("failed to parse activity message: %w", err)
 	}
 
-	return s.activityStore.CreateOrUpdateRecord(user.ID, msg.Chat.ID, msg.MessageID, activity, month, day, year)
+	// Try to update existing record first (for edited captions)
+	err = s.activityStore.UpdateRecord(*post)
+	if err == nil {
+		// Record was updated, not a new activity
+		return false, nil
+	}
+
+	// Record doesn't exist, create new one
+	err = s.activityStore.CreateRecord(*post)
+	if err != nil {
+		return false, err
+	}
+
+	// New activity was created
+	return true, nil
 }

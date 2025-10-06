@@ -126,14 +126,20 @@ func (s *BotService) handleCommand(msg *tgbotapi.Message) {
 func (s *BotService) handleActivity(msg *tgbotapi.Message, user *models.User) {
 	chatID := msg.Chat.ID
 
+	isNewActivity, err := s.onActivityPost(msg, user)
+	if err != nil {
+		slog.Error("Failed to post activity", "error", err)
+		return
+	}
+
+	// Only show leaderboard and enable GG for new activities, not edits/reactions
+	if !isNewActivity {
+		return
+	}
+
 	s.ggStates[chatID] = &ggState{
 		isFastestGGAvailable: true,
 		activityPosterID:     user.ID,
-	}
-
-	if err := s.onActivityPost(msg, user); err != nil {
-		slog.Error("Failed to post activity", "error", err)
-		return
 	}
 
 	if activityCountsMessage, err := s.getActivityCountsMessage(chatID); err == nil {

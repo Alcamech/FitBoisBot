@@ -7,6 +7,17 @@ import (
 	"gorm.io/gorm"
 )
 
+// ActivityPost represents activity data for creating or updating records.
+type ActivityPost struct {
+	UserID    int64
+	GroupID   int64
+	MessageID int
+	Activity  string
+	Month     string
+	Day       string
+	Year      string
+}
+
 // ActivityStore handles activity data operations.
 type ActivityStore struct {
 	db *gorm.DB
@@ -17,33 +28,35 @@ func NewActivityStore(db *gorm.DB) *ActivityStore {
 	return &ActivityStore{db: db}
 }
 
-// CreateOrUpdateRecord creates a new activity record or updates existing one if message is edited.
-func (s *ActivityStore) CreateOrUpdateRecord(userID, groupID int64, messageID int, activity, month, day, year string) error {
-	// For new messages, try to find existing record by message_id first
-	var existingRecord models.Activity
-	err := s.db.Where("user_id = ? AND group_id = ? AND message_id = ?", userID, groupID, messageID).First(&existingRecord).Error
-	
-	if err == nil {
-		// Record exists, update it
-		existingRecord.Activity = activity
-		existingRecord.Month = month
-		existingRecord.Day = day
-		existingRecord.Year = year
-		return s.db.Save(&existingRecord).Error
-	}
-	
-	// Record doesn't exist, create new one
+// CreateRecord creates a new activity record.
+func (s *ActivityStore) CreateRecord(post ActivityPost) error {
 	record := models.Activity{
-		UserID:    userID,
-		GroupID:   groupID,
-		MessageID: messageID, // Direct int value, no pointer needed
-		Activity:  activity,
-		Month:     month,
-		Day:       day,
-		Year:      year,
+		UserID:    post.UserID,
+		GroupID:   post.GroupID,
+		MessageID: post.MessageID,
+		Activity:  post.Activity,
+		Month:     post.Month,
+		Day:       post.Day,
+		Year:      post.Year,
+	}
+	return s.db.Create(&record).Error
+}
+
+// UpdateRecord updates an existing activity record by message ID.
+func (s *ActivityStore) UpdateRecord(post ActivityPost) error {
+	var existingRecord models.Activity
+	err := s.db.Where("user_id = ? AND group_id = ? AND message_id = ?",
+		post.UserID, post.GroupID, post.MessageID).First(&existingRecord).Error
+
+	if err != nil {
+		return err
 	}
 
-	return s.db.Create(&record).Error
+	existingRecord.Activity = post.Activity
+	existingRecord.Month = post.Month
+	existingRecord.Day = post.Day
+	existingRecord.Year = post.Year
+	return s.db.Save(&existingRecord).Error
 }
 
 // GetUserActivityByYear retrieves all activities for a user in a specific year.

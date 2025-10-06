@@ -5,41 +5,50 @@ import (
 	"strings"
 
 	"github.com/Alcamech/FitBoisBot/internal/constants"
+	"github.com/Alcamech/FitBoisBot/internal/store"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 // parseActivityMessage parses activity message in format "activity-MM-DD-YYYY" or "activity-MM-DD-YY".
-func parseActivityMessage(msg *tgbotapi.Message) (string, string, string, string, error) {
+func parseActivityMessage(msg *tgbotapi.Message) (*store.ActivityPost, error) {
 	// Expected format: "activity-MM-DD-YYYY" or "activity-MM-DD-YY"
 	parts := strings.Split(msg.Caption, "-")
 	if len(parts) != 4 {
-		return "", "", "", "", fmt.Errorf("invalid format: expected 'activity-MM-DD-YYYY' or 'activity-MM-DD-YY'")
+		return nil, fmt.Errorf("invalid format: expected 'activity-MM-DD-YYYY' or 'activity-MM-DD-YY'")
 	}
 
 	activity, month, day, yearStr := parts[0], parts[1], parts[2], parts[3]
 
 	// Validate activity name
 	if !isValidActivityName(activity) {
-		return "", "", "", "", fmt.Errorf("invalid activity name: must be 1-%d characters", constants.ActivityNameMaxLength)
+		return nil, fmt.Errorf("invalid activity name: must be 1-%d characters", constants.ActivityNameMaxLength)
 	}
 
 	// Validate month
 	if err := validateDatePart(month, constants.MinMonth, constants.MaxMonth, "month"); err != nil {
-		return "", "", "", "", err
+		return nil, err
 	}
 
 	// Validate day
 	if err := validateDatePart(day, constants.MinDay, constants.MaxDay, "day"); err != nil {
-		return "", "", "", "", err
+		return nil, err
 	}
 
 	// Convert year to full format
 	year, err := convertToFullYear(yearStr)
 	if err != nil {
-		return "", "", "", "", fmt.Errorf("invalid year: %w", err)
+		return nil, fmt.Errorf("invalid year: %w", err)
 	}
 
-	return activity, month, day, year, nil
+	return &store.ActivityPost{
+		UserID:    msg.From.ID,
+		GroupID:   msg.Chat.ID,
+		MessageID: msg.MessageID,
+		Activity:  activity,
+		Month:     month,
+		Day:       day,
+		Year:      year,
+	}, nil
 }
 
 // isActivity checks if message is an activity post (photo with caption).

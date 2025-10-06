@@ -41,27 +41,27 @@ test:
 	@go test ./...
 
 # Run tests with coverage
-test-coverage:
+test/coverage:
 	@echo "Running tests with coverage..."
 	@go test -cover ./...
 
 # Start database
-db-up:
+db/up:
 	@echo "Starting database..."
 	@docker compose up fitboisbot-db -d
 
 # Stop database
-db-down:
+db/down:
 	@echo "Stopping database..."
 	@docker compose down
 
 # Login to database
-db-login:
+db/login:
 	@echo "Connecting to database..."
 	@docker compose exec fitboisbot-db mariadb -u root -pfitboi_4er! fitbois
 
 # Seed database with mock data
-db-seed:
+db/seed:
 	@echo "Seeding database with mock data..."
 	@docker compose exec -T fitboisbot-db mariadb -u fitboi_user -pfitboi_4er! fitbois < scripts/insert_mock_data.sql
 	@echo "Mock data inserted successfully!"
@@ -91,11 +91,11 @@ help:
 	@echo "  install      - Install to ~/.local/bin"
 	@echo "  uninstall    - Remove from ~/.local/bin"
 	@echo "  test         - Run tests"
-	@echo "  test-coverage- Run tests with coverage report"
-	@echo "  db-up        - Start database container"
-	@echo "  db-down      - Stop database container"
-	@echo "  db-login     - Login to database container"
-	@echo "  db-seed      - Seed database with mock test data"
+	@echo "  test/coverage- Run tests with coverage report"
+	@echo "  db/up        - Start database container"
+	@echo "  db/down      - Stop database container"
+	@echo "  db/login     - Login to database container"
+	@echo "  db/seed      - Seed database with mock test data"
 	@echo "  fmt          - Format code"
 	@echo "  clean        - Clean build artifacts"
 	@echo "  deps         - Install/update dependencies"

@@ -213,40 +213,43 @@ func TestParseActivityMessage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			msg := &tgbotapi.Message{
 				Caption: tt.caption,
+				From:    &tgbotapi.User{ID: 123},
+				Chat:    &tgbotapi.Chat{ID: 456},
+				MessageID: 789,
 			}
 
-			act, mon, day, yr, err := parseActivityMessage(msg)
-			
+			post, err := parseActivityMessage(msg)
+
 			if tt.expectErr {
 				if err == nil {
 					t.Errorf("expected error but got none")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("expected no error but got: %v", err)
 				return
 			}
 
-			if act != tt.expectedAct {
-				t.Errorf("expected activity %q but got %q", tt.expectedAct, act)
+			if post.Activity != tt.expectedAct {
+				t.Errorf("expected activity %q but got %q", tt.expectedAct, post.Activity)
 			}
-			if mon != tt.expectedMon {
-				t.Errorf("expected month %q but got %q", tt.expectedMon, mon)
+			if post.Month != tt.expectedMon {
+				t.Errorf("expected month %q but got %q", tt.expectedMon, post.Month)
 			}
-			if day != tt.expectedDay {
-				t.Errorf("expected day %q but got %q", tt.expectedDay, day)
+			if post.Day != tt.expectedDay {
+				t.Errorf("expected day %q but got %q", tt.expectedDay, post.Day)
 			}
 			// For YY format, we'll accept any century
-			if len(tt.expectedYr) == 4 && len(yr) == 4 {
+			if len(tt.expectedYr) == 4 && len(post.Year) == 4 {
 				if tt.caption == "cycling-12-25-23" {
 					// Accept any valid conversion of "23" to full year
-					if yr < "2023" || yr > "2023" {
+					if post.Year < "2023" || post.Year > "2023" {
 						// This might need adjustment based on when test runs
 					}
-				} else if yr != tt.expectedYr {
-					t.Errorf("expected year %q but got %q", tt.expectedYr, yr)
+				} else if post.Year != tt.expectedYr {
+					t.Errorf("expected year %q but got %q", tt.expectedYr, post.Year)
 				}
 			}
 		})

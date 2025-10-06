@@ -73,6 +73,6 @@ func (s *BotService) processMonthlyTokenAwards() {
 			winnerNames = append(winnerNames, user.Name)
 		}
 
-		s.sendMonthlyAwardMessage(group.ID, winnerNames, activityMonth, activityYear, rewardPerUser, numWinners, activityCount)
+		s.sendMonthlyAwardMessage(group.ID, winnerNames, activityMonth, activityYear, activityCount)
 	}
 }
