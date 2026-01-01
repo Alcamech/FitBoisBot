@@ -3,11 +3,13 @@ package database
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
 	"github.com/Alcamech/FitBoisBot/config"
+	"github.com/Alcamech/FitBoisBot/internal/database/models"
 )
 
 var DB *gorm.DB
@@ -24,15 +26,22 @@ func InitDB() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// AutoMigrate disabled for production - use manual migrations instead
-	// if err := DB.AutoMigrate(
-	// 	&models.User{},
-	// 	&models.Activity{},
-	// 	&models.Gg{},
-	// 	&models.Group{},
-	// 	&models.Token{}); err != nil {
-	// 	log.Fatalf("Failed to migrate database: %v", err)
-	// }
+	// Skip migration if SKIP_MIGRATE is set
+	if os.Getenv("SKIP_MIGRATE") == "true" {
+		log.Println("Database connection established (migration skipped)")
+		return
+	}
+
+	if err := DB.AutoMigrate(
+		&models.User{},
+		&models.Activity{},
+		&models.Gg{},
+		&models.Group{},
+		&models.Token{},
+		&models.Challenge{},
+		&models.ChallengeParticipant{}); err != nil {
+		log.Fatalf("Failed to migrate database: %v", err)
+	}
 
 	log.Println("Database connection established and schema migrated")
 }

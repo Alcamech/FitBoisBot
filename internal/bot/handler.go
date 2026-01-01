@@ -41,7 +41,17 @@ func (s *BotService) onFastGG(chatID int64) {
 	s.sendHTMLText(chatID, message)
 }
 
-func (s *BotService) onHelp(chatID int64) {
+func (s *BotService) onHelp(msg *tgbotapi.Message) {
+	chatID := msg.Chat.ID
+	args := strings.ToLower(strings.TrimSpace(msg.CommandArguments()))
+
+	// Check for topic-specific help
+	if args == "challenge" || args == "c" {
+		s.sendHTMLText(chatID, constants.MsgChallengeHelp)
+		return
+	}
+
+	// Default help
 	versionInfo := strings.ReplaceAll(version.GetVersionInfo(), ".", "\\.")
 	helpText := fmt.Sprintf(constants.MsgHelpText, versionInfo)
 	s.sendMarkdownText(chatID, helpText)
@@ -116,6 +126,32 @@ func (s *BotService) onTokens(chatID int64) {
 	}
 
 	message := s.formatTokenLeaderboard(leaderboard)
+	s.sendHTMLText(chatID, message)
+}
+
+func (s *BotService) onBalance(msg *tgbotapi.Message) {
+	chatID := msg.Chat.ID
+	userID := msg.From.ID
+
+	balance, err := s.tokenStore.GetUserLifetimeBalance(userID, chatID)
+	if err != nil {
+		slog.Error("Failed to fetch balance", "error", err, "user_id", userID)
+		s.sendText(chatID, "Failed to fetch balance.")
+		return
+	}
+
+	name := msg.From.FirstName
+	s.sendHTMLText(chatID, fmt.Sprintf("<b>%s</b>: %d tokens", name, balance))
+}
+
+func (s *BotService) onLeaderboard(chatID int64) {
+	message, err := s.getActivityCountsMessage(chatID)
+	if err != nil {
+		slog.Error("Failed to fetch leaderboard", "error", err, "chat_id", chatID)
+		s.sendText(chatID, constants.MsgLeaderboardFailed)
+		return
+	}
+
 	s.sendHTMLText(chatID, message)
 }
 

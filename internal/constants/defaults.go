@@ -41,3 +41,62 @@ const (
 	MaxDay   = 31
 )
 
+// Challenge configuration
+const (
+	// ChallengeJoinWindow is the time allowed for participants to join before auto-cancel
+	ChallengeJoinWindow = 12 * time.Hour
+
+	// ChallengeDuration is the total duration of an active challenge
+	ChallengeDuration = 14 * 24 * time.Hour
+
+	// ChallengeSchedulerInterval is how often the challenge scheduler checks for auto-actions
+	ChallengeSchedulerInterval = 1 * time.Hour
+
+	// ChallengePageSize is the number of challenges shown per page in /listchallenges
+	ChallengePageSize = 5
+)
+
+// Challenge difficulty multipliers
+const (
+	MultiplierEasy     = 0.5
+	MultiplierModerate = 1.0
+	MultiplierHard     = 1.5
+)
+
+// Challenge status values
+const (
+	ChallengeStatusPending   = "pending"
+	ChallengeStatusActive    = "active"
+	ChallengeStatusCompleted = "completed"
+	ChallengeStatusCancelled = "cancelled"
+)
+
+// Challenge difficulty values
+const (
+	DifficultyEasy     = "easy"
+	DifficultyModerate = "moderate"
+	DifficultyHard     = "hard"
+)
+
+// Challenge status badges (emojis)
+const (
+	StatusBadgePending   = "🕐"
+	StatusBadgeActive    = "🔥"
+	StatusBadgeCompleted = "✅"
+	StatusBadgeCancelled = "❌"
+)
+
+// Challenge difficulty badges (emojis)
+const (
+	DifficultyBadgeEasy     = "⭐"
+	DifficultyBadgeModerate = "⭐⭐"
+	DifficultyBadgeHard     = "⭐⭐⭐"
+)
+
+// Button labels
+const (
+	ButtonPrevious   = "« Previous"
+	ButtonNext       = "Next »"
+	ButtonBackToList = "« Back to List"
+)
+

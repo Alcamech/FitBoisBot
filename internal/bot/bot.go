@@ -3,6 +3,7 @@ package bot
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/Alcamech/FitBoisBot/config"
 	"github.com/Alcamech/FitBoisBot/internal/constants"
@@ -14,13 +15,15 @@ import (
 
 // BotService encapsulates all bot dependencies and state
 type BotService struct {
-	bot           *tgbotapi.BotAPI
-	userStore     *store.UserStore
-	activityStore *store.ActivityStore
-	ggStore       *store.GGStore
-	groupStore    *store.GroupStore
-	tokenStore    *store.TokenStore
-	ggStates      map[int64]*ggState
+	bot              *tgbotapi.BotAPI
+	userStore        *store.UserStore
+	activityStore    *store.ActivityStore
+	ggStore          *store.GGStore
+	groupStore       *store.GroupStore
+	tokenStore       *store.TokenStore
+	challengeStore   *store.ChallengeStore
+	participantStore *store.ParticipantStore
+	ggStates         map[int64]*ggState
 }
 
 type ggState struct {
@@ -30,7 +33,7 @@ type ggState struct {
 
 func BotLoop() {
 	slog.Info("FitBoisBot started")
-	
+
 	service, err := NewBotService()
 	if err != nil {
 		slog.Error("Failed to initialize bot service", "error", err)
@@ -40,10 +43,13 @@ func BotLoop() {
 	slog.Info("Bot authorized", "username", service.bot.Self.UserName)
 
 	botConfig := tgbotapi.NewUpdate(0)
-	botConfig.AllowedUpdates = []string{"message", "edited_message"}
+	botConfig.AllowedUpdates = []string{"message", "edited_message", "callback_query"}
 	botConfig.Timeout = 60
 
 	updates := service.bot.GetUpdatesChan(botConfig)
+
+	// Start challenge scheduler in background
+	go service.ScheduleChallengeChecks()
 
 	service.processUpdates(updates)
 }
@@ -58,21 +64,36 @@ func NewBotService() (*BotService, error) {
 	bot.Debug = config.AppConfig.Debug
 
 	return &BotService{
-		bot:           bot,
-		userStore:     store.NewUserStore(database.DB),
-		activityStore: store.NewActivityStore(database.DB),
-		ggStore:       store.NewGGStore(database.DB),
-		groupStore:    store.NewGroupStore(database.DB),
-		tokenStore:    store.NewTokenStore(database.DB),
-		ggStates:      make(map[int64]*ggState),
+		bot:              bot,
+		userStore:        store.NewUserStore(database.DB),
+		activityStore:    store.NewActivityStore(database.DB),
+		ggStore:          store.NewGGStore(database.DB),
+		groupStore:       store.NewGroupStore(database.DB),
+		tokenStore:       store.NewTokenStore(database.DB),
+		challengeStore:   store.NewChallengeStore(database.DB),
+		participantStore: store.NewParticipantStore(database.DB),
+		ggStates:         make(map[int64]*ggState),
 	}, nil
 }
 
 func (s *BotService) processUpdates(updates tgbotapi.UpdatesChannel) {
 	for update := range updates {
+		// Handle callback queries (inline keyboard buttons)
+		if update.CallbackQuery != nil {
+			s.handleCallbackQuery(update.CallbackQuery)
+			continue
+		}
+
 		if msg := extractMessage(update); msg != nil {
 			s.processMessage(msg)
 		}
+	}
+}
+
+func (s *BotService) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
+	// Route challenge callbacks
+	if strings.HasPrefix(callback.Data, "challenge_") {
+		s.handleChallengeCallback(callback)
 	}
 }
 
@@ -112,14 +133,32 @@ func (s *BotService) processMessage(msg *tgbotapi.Message) {
 
 func (s *BotService) handleCommand(msg *tgbotapi.Message) {
 	switch msg.Command() {
-	case "help":
-		s.onHelp(msg.Chat.ID)
-	case "fastgg":
+	case "help", "h":
+		s.onHelp(msg)
+	case "fastgg", "gg":
 		s.onFastGG(msg.Chat.ID)
-	case "tokens":
+	case "tokens", "t":
 		s.onTokens(msg.Chat.ID)
-	case "timezone":
+	case "balance", "b":
+		s.onBalance(msg)
+	case "leaderboard", "l":
+		s.onLeaderboard(msg.Chat.ID)
+	case "timezone", "tz":
 		s.onSetTimezone(msg)
+	case "challenge", "c":
+		s.onChallenge(msg)
+	case "joinchallenge", "jc":
+		s.onJoinChallenge(msg)
+	case "viewchallenge", "vc":
+		s.onViewChallenge(msg)
+	case "listchallenges", "lc":
+		s.onListChallenges(msg)
+	case "score", "s":
+		s.onScore(msg)
+	case "cancelchallenge", "cc":
+		s.onCancelChallenge(msg)
+	case "completechallenge", "done":
+		s.onCompleteChallenge(msg)
 	}
 }
 
@@ -193,8 +232,10 @@ func (s *BotService) GetAllGroups() ([]models.Group, error) {
 	return s.groupStore.GetAll()
 }
 
-// SendAnnouncement sends a message to a specific group
+// SendAnnouncement sends a message to a specific group with HTML parsing
 func (s *BotService) SendAnnouncement(groupID int64, message string) error {
-	_, err := s.bot.Send(tgbotapi.NewMessage(groupID, message))
+	msg := tgbotapi.NewMessage(groupID, message)
+	msg.ParseMode = "HTML"
+	_, err := s.bot.Send(msg)
 	return err
 }

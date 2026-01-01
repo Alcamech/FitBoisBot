@@ -48,3 +48,30 @@ func (s *TokenStore) GetYearlyLeaderboard(groupID int64, year string) ([]models.
 		Find(&leaderboard).Error
 	return leaderboard, err
 }
+
+// GetUserBalance returns a user's token balance for a specific year.
+func (s *TokenStore) GetUserBalance(userID, groupID int64, year string) (int, error) {
+	var token models.Token
+	err := s.db.Where("user_id = ? AND group_id = ? AND year = ?", userID, groupID, year).
+		First(&token).Error
+	if err == gorm.ErrRecordNotFound {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return token.Balance, nil
+}
+
+// GetUserLifetimeBalance returns a user's total token balance across all years.
+func (s *TokenStore) GetUserLifetimeBalance(userID, groupID int64) (int, error) {
+	var total int
+	err := s.db.Model(&models.Token{}).
+		Where("user_id = ? AND group_id = ?", userID, groupID).
+		Select("COALESCE(SUM(balance), 0)").
+		Scan(&total).Error
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
+}

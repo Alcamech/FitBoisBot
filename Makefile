@@ -1,6 +1,6 @@
 # FitBoisBot Makefile
 
-.PHONY: build run serve dev install uninstall db-up db-down db-login db-seed fmt help
+.PHONY: build run serve dev install uninstall db/up db/down db/login db/seed db/nuke fmt help
 
 # Build the application
 build:
@@ -66,6 +66,12 @@ db/seed:
 	@docker compose exec -T fitboisbot-db mariadb -u fitboi_user -pfitboi_4er! fitbois < scripts/insert_mock_data.sql
 	@echo "Mock data inserted successfully!"
 
+# Nuke database (drop all tables)
+db/nuke:
+	@echo "Nuking database..."
+	@docker compose exec fitboisbot-db mariadb -u root -pfitboi_4er! fitbois -e "DROP TABLE IF EXISTS activities, ggs, tokens, users, \`groups\`;"
+	@echo "All tables dropped!"
+
 # Format code
 fmt:
 	@echo "Formatting code..."
@@ -96,6 +102,7 @@ help:
 	@echo "  db/down      - Stop database container"
 	@echo "  db/login     - Login to database container"
 	@echo "  db/seed      - Seed database with mock test data"
+	@echo "  db/nuke      - Drop all tables"
 	@echo "  fmt          - Format code"
 	@echo "  clean        - Clean build artifacts"
 	@echo "  deps         - Install/update dependencies"

@@ -46,7 +46,12 @@ FitBoisBot is a Go Telegram bot for fitness accountability and gamification.
 ### Key Files
 
 - `bot.go` - Main bot service and message processing
-- `handler.go` - Command handlers (/help, /fastgg, /tokens, /timezone)
+- `handler.go` - Command handlers (/help, /fastgg, /tokens, /balance, /timezone)
+- `challenge_handler.go` - Challenge system command handlers
+- `challenge_formatting.go` - Challenge display formatting
+- `challenge_keyboard.go` - Inline keyboard pagination for challenges
+- `challenge_parsing.go` - Challenge command parsing
+- `challenge_scheduler.go` - Auto-cancel and auto-complete scheduler
 - `parsing.go` - Activity message parsing
 - `validation.go` - Input validation
 - `time.go` - Timezone operations
@@ -56,11 +61,19 @@ FitBoisBot is a Go Telegram bot for fitness accountability and gamification.
 
 ### Features
 
-- Activity tracking (activity-MM-DD-YYYY format)
-- Fastest GG competition system
-- Monthly token rewards
+- Activity tracking (activity-MM-DD-YYYY or activity-MM-DD-YY format)
+- Self-correction support for editing activity posts
+- Fastest GG competition system (prevents self-GGing)
+- Monthly FitBoi Awards with automatic tie-handling and token distribution
+- Token reward system with leaderboards and individual balance lookup
+- Challenge system with difficulty tiers (easy/moderate/hard), token wagers, and multiplier payouts
+- Inline keyboard pagination for challenge browsing
+- Auto-cancel (12h) and auto-complete (14d) challenge scheduling
 - Multi-group timezone support
-- HTML-formatted leaderboards (activity counts, GG rankings, token balances)
+- HTML-formatted sorted leaderboards (activity counts, GG rankings, token balances)
+- Monthly activity leaderboard formatting
 - Admin CLI for announcements
 - Version tracking with build-time injection
 - Full timestamp tracking (created_at/updated_at) across all entities
+- Comprehensive test coverage (formatting, keyboard, parsing, store operations)
+- Command shorthands for faster interaction (/c, /jc, /vc, /lc, /s, /cc, /done, /b, /t, /l, /gg, /tz, /h)
