@@ -15,8 +15,9 @@ func NewTokenStore(db *gorm.DB) *TokenStore {
 	return &TokenStore{db: db}
 }
 
-// IncrementTokens adds tokens to a user's balance for a specific year.
-func (s *TokenStore) IncrementTokens(userID, groupID int64, year string, tokens int) error {
+// AddEarnings adds tokens to a user's earnings for a specific year.
+// This tracks how many tokens a user has earned (always positive amounts).
+func (s *TokenStore) AddEarnings(userID, groupID int64, year string, tokens int) error {
 	var token models.Token
 
 	err := s.db.Where("user_id = ? AND group_id = ? AND year = ?", userID, groupID, year).
@@ -27,7 +28,7 @@ func (s *TokenStore) IncrementTokens(userID, groupID int64, year string, tokens 
 			UserID:  userID,
 			GroupID: groupID,
 			Year:    year,
-			Balance: tokens,
+			Earned:  tokens,
 		}
 		return s.db.Create(&token).Error
 	}
@@ -36,21 +37,21 @@ func (s *TokenStore) IncrementTokens(userID, groupID int64, year string, tokens 
 		return err
 	}
 
-	token.Balance += tokens
+	token.Earned += tokens
 	return s.db.Save(&token).Error
 }
 
-// GetYearlyLeaderboard returns the token leaderboard for a specific year.
+// GetYearlyLeaderboard returns the token earnings leaderboard for a specific year.
 func (s *TokenStore) GetYearlyLeaderboard(groupID int64, year string) ([]models.Token, error) {
 	var leaderboard []models.Token
 	err := s.db.Where("group_id = ? AND year = ?", groupID, year).
-		Order("balance DESC").
+		Order("earned DESC").
 		Find(&leaderboard).Error
 	return leaderboard, err
 }
 
-// GetUserBalance returns a user's token balance for a specific year.
-func (s *TokenStore) GetUserBalance(userID, groupID int64, year string) (int, error) {
+// GetUserEarnings returns a user's token earnings for a specific year.
+func (s *TokenStore) GetUserEarnings(userID, groupID int64, year string) (int, error) {
 	var token models.Token
 	err := s.db.Where("user_id = ? AND group_id = ? AND year = ?", userID, groupID, year).
 		First(&token).Error
@@ -60,18 +61,5 @@ func (s *TokenStore) GetUserBalance(userID, groupID int64, year string) (int, er
 	if err != nil {
 		return 0, err
 	}
-	return token.Balance, nil
-}
-
-// GetUserLifetimeBalance returns a user's total token balance across all years.
-func (s *TokenStore) GetUserLifetimeBalance(userID, groupID int64) (int, error) {
-	var total int
-	err := s.db.Model(&models.Token{}).
-		Where("user_id = ? AND group_id = ?", userID, groupID).
-		Select("COALESCE(SUM(balance), 0)").
-		Scan(&total).Error
-	if err != nil {
-		return 0, err
-	}
-	return total, nil
+	return token.Earned, nil
 }

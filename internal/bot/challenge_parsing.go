@@ -124,14 +124,11 @@ type ScoreEntry struct {
 }
 
 // parseScoreCommand parses the /score command from a message.
-// Supports two formats:
+// Supports formats:
 // - Individual scores: /score @john 5 @rob 6
 // - Shared score: /score @john @rob @mark 10
+// - Self-scoring: /score me 5 (creator scores themselves)
 func parseScoreCommand(msg *tgbotapi.Message) ([]ScoreEntry, error) {
-	if len(msg.Entities) == 0 {
-		return nil, fmt.Errorf("no users mentioned")
-	}
-
 	args := msg.CommandArguments()
 	if args == "" {
 		return nil, fmt.Errorf("no arguments provided")
@@ -139,20 +136,30 @@ func parseScoreCommand(msg *tgbotapi.Message) ([]ScoreEntry, error) {
 
 	// Extract all mentioned users
 	mentionedUsers := extractMentionedUserIDs(msg)
-	if len(mentionedUsers) == 0 {
-		return nil, fmt.Errorf("no valid users mentioned")
-	}
 
-	// Parse the arguments to extract numbers
+	// Parse the arguments to extract numbers and check for "me" keyword
 	parts := strings.Fields(args)
 	numbers := []int{}
+	hasMeKeyword := false
 	for _, part := range parts {
-		if !strings.HasPrefix(part, "@") {
+		lower := strings.ToLower(part)
+		if lower == "me" {
+			hasMeKeyword = true
+		} else if !strings.HasPrefix(part, "@") {
 			num, err := strconv.Atoi(part)
 			if err == nil {
 				numbers = append(numbers, num)
 			}
 		}
+	}
+
+	// Add sender to mentioned users if "me" keyword is used
+	if hasMeKeyword {
+		mentionedUsers = append([]int64{msg.From.ID}, mentionedUsers...)
+	}
+
+	if len(mentionedUsers) == 0 {
+		return nil, fmt.Errorf("no valid users mentioned (use @mention or 'me')")
 	}
 
 	if len(numbers) == 0 {
@@ -271,7 +278,28 @@ func extractMentionedUserIDs(msg *tgbotapi.Message) []int64 {
 
 // parseCompleteChallengeCommand extracts winner user IDs from the message.
 func parseCompleteChallengeCommand(msg *tgbotapi.Message) []int64 {
-	return extractMentionedUserIDs(msg)
+	userIDs := extractMentionedUserIDs(msg)
+
+	// Check for "me" keyword to include sender as winner
+	args := msg.CommandArguments()
+	for _, part := range strings.Fields(args) {
+		if strings.ToLower(part) == "me" {
+			// Prepend sender to list (avoid duplicates)
+			found := false
+			for _, id := range userIDs {
+				if id == msg.From.ID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				userIDs = append([]int64{msg.From.ID}, userIDs...)
+			}
+			break
+		}
+	}
+
+	return userIDs
 }
 
 // parseCallbackData parses inline keyboard callback data.

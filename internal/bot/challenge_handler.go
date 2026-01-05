@@ -9,7 +9,6 @@ import (
 	"github.com/Alcamech/FitBoisBot/internal/constants"
 	"github.com/Alcamech/FitBoisBot/internal/database/models"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"gorm.io/gorm"
 )
 
 // onChallenge handles the /challenge command to create a new challenge.
@@ -43,16 +42,15 @@ func (s *BotService) onChallenge(msg *tgbotapi.Message) {
 		return
 	}
 
-	// Check user has sufficient tokens
-	year, _ := s.getCurrentYear(chatID)
-	hasTokens, err := s.checkUserTokens(userID, chatID, year, params.Wager)
+	// Check user has sufficient tokens (lifetime balance)
+	hasTokens, err := s.checkUserTokens(userID, chatID, params.Wager)
 	if err != nil || !hasTokens {
 		s.sendHTMLText(chatID, constants.MsgChallengeInsufficientTokens)
 		return
 	}
 
-	// Deduct wager from creator
-	if err := s.tokenStore.IncrementTokens(userID, chatID, year, -params.Wager); err != nil {
+	// Deduct wager from creator's balance
+	if err := s.userBalanceStore.IncrementBalance(userID, chatID, -params.Wager); err != nil {
 		slog.Error("Failed to deduct tokens", "error", err)
 		s.sendHTMLText(chatID, "Failed to create challenge. Please try again.")
 		return
@@ -72,7 +70,7 @@ func (s *BotService) onChallenge(msg *tgbotapi.Message) {
 	if err := s.challengeStore.CreateChallenge(challenge); err != nil {
 		slog.Error("Failed to create challenge", "error", err)
 		// Refund tokens
-		s.tokenStore.IncrementTokens(userID, chatID, year, params.Wager)
+		s.userBalanceStore.IncrementBalance(userID, chatID, params.Wager)
 		s.sendHTMLText(chatID, "Failed to create challenge. Please try again.")
 		return
 	}
@@ -125,16 +123,15 @@ func (s *BotService) onJoinChallenge(msg *tgbotapi.Message) {
 		return
 	}
 
-	// Check user has sufficient tokens
-	year, _ := s.getCurrentYear(chatID)
-	hasTokens, err := s.checkUserTokens(userID, chatID, year, wager)
+	// Check user has sufficient tokens (lifetime balance)
+	hasTokens, err := s.checkUserTokens(userID, chatID, wager)
 	if err != nil || !hasTokens {
 		s.sendHTMLText(chatID, constants.MsgChallengeInsufficientTokens)
 		return
 	}
 
-	// Deduct wager
-	if err := s.tokenStore.IncrementTokens(userID, chatID, year, -wager); err != nil {
+	// Deduct wager from user's balance
+	if err := s.userBalanceStore.IncrementBalance(userID, chatID, -wager); err != nil {
 		slog.Error("Failed to deduct tokens", "error", err)
 		return
 	}
@@ -149,7 +146,7 @@ func (s *BotService) onJoinChallenge(msg *tgbotapi.Message) {
 	if err := s.participantStore.CreateParticipant(participant); err != nil {
 		slog.Error("Failed to add participant", "error", err)
 		// Refund tokens
-		s.tokenStore.IncrementTokens(userID, chatID, year, wager)
+		s.userBalanceStore.IncrementBalance(userID, chatID, wager)
 		return
 	}
 
@@ -319,11 +316,10 @@ func (s *BotService) onCancelChallenge(msg *tgbotapi.Message) {
 		return
 	}
 
-	// Refund creator's wager
-	year, _ := s.getCurrentYear(chatID)
+	// Refund creator's wager to their balance
 	creatorParticipant, err := s.participantStore.GetCreatorParticipant(challenge.ID, userID)
 	if err == nil && creatorParticipant != nil {
-		s.tokenStore.IncrementTokens(userID, chatID, year, creatorParticipant.WagerAmount)
+		s.userBalanceStore.IncrementBalance(userID, chatID, creatorParticipant.WagerAmount)
 	}
 
 	// Update status
@@ -399,12 +395,18 @@ func (s *BotService) onCompleteChallenge(msg *tgbotapi.Message) {
 	// Award tokens to winners
 	for _, winner := range winners {
 		// Payout = wager + (wager * multiplier)
-		// We mint (wager * multiplier) as profit
+		// Bonus (wager * multiplier) is tracked as earnings
 		bonus := int(float64(winner.WagerAmount) * challenge.Multiplier)
 		payout := winner.WagerAmount + bonus
 
-		if err := s.tokenStore.IncrementTokens(winner.UserID, chatID, year, payout); err != nil {
-			slog.Error("Failed to award tokens", "error", err, "user_id", winner.UserID)
+		// Track the bonus as yearly earnings
+		if err := s.tokenStore.AddEarnings(winner.UserID, chatID, year, bonus); err != nil {
+			slog.Error("Failed to record earnings", "error", err, "user_id", winner.UserID)
+		}
+
+		// Add full payout to spendable balance
+		if err := s.userBalanceStore.IncrementBalance(winner.UserID, chatID, payout); err != nil {
+			slog.Error("Failed to add to balance", "error", err, "user_id", winner.UserID)
 		}
 	}
 
@@ -475,19 +477,7 @@ func (s *BotService) getCurrentYear(chatID int64) (string, error) {
 	return GetCurrentYear(timezone)
 }
 
-// checkUserTokens checks if a user has sufficient tokens.
-func (s *BotService) checkUserTokens(userID, groupID int64, year string, amount int) (bool, error) {
-	leaderboard, err := s.tokenStore.GetYearlyLeaderboard(groupID, year)
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return false, err
-	}
-
-	for _, token := range leaderboard {
-		if token.UserID == userID {
-			return token.Balance >= amount, nil
-		}
-	}
-
-	// User has no tokens
-	return false, nil
+// checkUserTokens checks if a user has sufficient tokens in their spendable balance.
+func (s *BotService) checkUserTokens(userID, groupID int64, amount int) (bool, error) {
+	return s.userBalanceStore.HasSufficientBalance(userID, groupID, amount)
 }

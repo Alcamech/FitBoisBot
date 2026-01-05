@@ -37,11 +37,10 @@ func (s *BotService) processPendingChallenges() {
 		}
 
 		if count <= 1 {
-			// Refund creator's wager
+			// Refund creator's wager to their balance
 			creatorParticipant, err := s.participantStore.GetCreatorParticipant(challenge.ID, challenge.CreatorID)
 			if err == nil && creatorParticipant != nil {
-				year, _ := s.getCurrentYear(challenge.GroupID)
-				if err := s.tokenStore.IncrementTokens(challenge.CreatorID, challenge.GroupID, year, creatorParticipant.WagerAmount); err != nil {
+				if err := s.userBalanceStore.IncrementBalance(challenge.CreatorID, challenge.GroupID, creatorParticipant.WagerAmount); err != nil {
 					slog.Error("Failed to refund creator", "error", err, "challenge_id", challenge.ID)
 				}
 			}

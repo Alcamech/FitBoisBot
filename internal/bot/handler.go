@@ -133,7 +133,7 @@ func (s *BotService) onBalance(msg *tgbotapi.Message) {
 	chatID := msg.Chat.ID
 	userID := msg.From.ID
 
-	balance, err := s.tokenStore.GetUserLifetimeBalance(userID, chatID)
+	balance, err := s.userBalanceStore.GetBalance(userID, chatID)
 	if err != nil {
 		slog.Error("Failed to fetch balance", "error", err, "user_id", userID)
 		s.sendText(chatID, "Failed to fetch balance.")

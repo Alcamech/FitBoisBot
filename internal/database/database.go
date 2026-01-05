@@ -38,6 +38,7 @@ func InitDB() {
 		&models.Gg{},
 		&models.Group{},
 		&models.Token{},
+		&models.UserBalance{},
 		&models.Challenge{},
 		&models.ChallengeParticipant{}); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)

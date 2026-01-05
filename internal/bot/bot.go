@@ -21,6 +21,7 @@ type BotService struct {
 	ggStore          *store.GGStore
 	groupStore       *store.GroupStore
 	tokenStore       *store.TokenStore
+	userBalanceStore *store.UserBalanceStore
 	challengeStore   *store.ChallengeStore
 	participantStore *store.ParticipantStore
 	ggStates         map[int64]*ggState
@@ -70,6 +71,7 @@ func NewBotService() (*BotService, error) {
 		ggStore:          store.NewGGStore(database.DB),
 		groupStore:       store.NewGroupStore(database.DB),
 		tokenStore:       store.NewTokenStore(database.DB),
+		userBalanceStore: store.NewUserBalanceStore(database.DB),
 		challengeStore:   store.NewChallengeStore(database.DB),
 		participantStore: store.NewParticipantStore(database.DB),
 		ggStates:         make(map[int64]*ggState),

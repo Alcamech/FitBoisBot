@@ -59,9 +59,17 @@ func (s *BotService) processMonthlyTokenAwards() {
 
 		var winnerNames []string
 		for _, userID := range userIDs {
-			err = s.tokenStore.IncrementTokens(userID, group.ID, currentYear, rewardPerUser)
+			// Track earnings for the year
+			err = s.tokenStore.AddEarnings(userID, group.ID, currentYear, rewardPerUser)
 			if err != nil {
-				slog.Error("Failed to award tokens", "error", err, "user_id", userID, "group_id", group.ID)
+				slog.Error("Failed to record earnings", "error", err, "user_id", userID, "group_id", group.ID)
+				continue
+			}
+
+			// Add to spendable balance
+			err = s.userBalanceStore.IncrementBalance(userID, group.ID, rewardPerUser)
+			if err != nil {
+				slog.Error("Failed to add to balance", "error", err, "user_id", userID, "group_id", group.ID)
 				continue
 			}
 

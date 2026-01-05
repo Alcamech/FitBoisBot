@@ -53,7 +53,7 @@ func (s *BotService) formatTokenLeaderboard(leaderboard []models.Token) string {
 		if user == nil {
 			continue
 		}
-		builder.WriteString(fmt.Sprintf("%d. %s: <b>%d</b> tokens\n", i+1, user.Name, entry.Balance))
+		builder.WriteString(fmt.Sprintf("%d. %s: <b>%d</b> tokens\n", i+1, user.Name, entry.Earned))
 	}
 
 	return builder.String()
