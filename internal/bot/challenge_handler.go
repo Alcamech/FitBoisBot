@@ -257,16 +257,16 @@ func (s *BotService) onScore(msg *tgbotapi.Message) {
 		return
 	}
 
-	// Only creator can score
-	if challenge.CreatorID != userID {
-		s.sendHTMLText(chatID, constants.MsgChallengeOnlyCreator)
-		return
-	}
-
 	// Parse score entries
 	entries, err := parseScoreCommand(msg)
 	if err != nil {
 		s.sendHTMLText(chatID, fmt.Sprintf("Invalid score format: %s", err.Error()))
+		return
+	}
+
+	// The creator can score anyone; other participants can only score themselves.
+	if !canScoreEntries(challenge.CreatorID == userID, userID, entries) {
+		s.sendHTMLText(chatID, constants.MsgChallengeOnlyScoreSelf)
 		return
 	}
 
@@ -480,4 +480,19 @@ func (s *BotService) getCurrentYear(chatID int64) (string, error) {
 // checkUserTokens checks if a user has sufficient tokens in their spendable balance.
 func (s *BotService) checkUserTokens(userID, groupID int64, amount int) (bool, error) {
 	return s.userBalanceStore.HasSufficientBalance(userID, groupID, amount)
+}
+
+// canScoreEntries reports whether the sender is authorized to apply the given
+// score entries. The challenge creator may score any participant; every other
+// participant may only score themselves.
+func canScoreEntries(isCreator bool, senderID int64, entries []ScoreEntry) bool {
+	if isCreator {
+		return true
+	}
+	for _, entry := range entries {
+		if entry.UserID != senderID {
+			return false
+		}
+	}
+	return true
 }

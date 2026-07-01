@@ -65,6 +65,7 @@ const (
 	MsgChallengeAlreadyParticipant = "You're already in this challenge."
 	MsgChallengeInvalidDifficulty  = "Invalid difficulty. Use: easy, moderate, or hard"
 	MsgChallengeOnlyCreator        = "Only the challenge creator can do that."
+	MsgChallengeOnlyScoreSelf      = "You can only score yourself. Use: /score me [points]"
 	MsgChallengeNoLongerActive     = "Challenge is completed. No more scoring allowed."
 	MsgChallengeScoreUpdated       = "Score updated!"
 	MsgChallengeScoresUpdated      = "Scores updated for %d participant(s)!"
@@ -97,8 +98,10 @@ Create fitness challenges with token rewards based on difficulty!
   Browse all challenges with pagination
 
 • <code>/score</code> or <code>/s</code> @user1 [points1] @user2 [points2]...
-  Award points to participants (creator only)
+  Award points to participants
+  (creator scores anyone; participants can score themselves)
   Examples:
+    /s me 5 (score yourself)
     /s @john 5 @rob 6 (individual scores)
     /s @john @rob @mark 10 (shared score)
 
