@@ -235,6 +235,67 @@ func TestSetWinners_NoWinners(t *testing.T) {
 	}
 }
 
+func TestGetParticipants(t *testing.T) {
+	db := setupParticipantTestDB(t)
+	store := NewParticipantStore(db)
+
+	challenge := createTestChallenge(db)
+
+	// Participants in this challenge, each with a distinct wager.
+	db.Create(&models.ChallengeParticipant{ChallengeID: challenge.ID, UserID: 1, WagerAmount: 50})
+	db.Create(&models.ChallengeParticipant{ChallengeID: challenge.ID, UserID: 2, WagerAmount: 75})
+	db.Create(&models.ChallengeParticipant{ChallengeID: challenge.ID, UserID: 3, WagerAmount: 100})
+
+	// A participant in a different challenge that must NOT be returned.
+	other := createTestChallenge(db)
+	db.Create(&models.ChallengeParticipant{ChallengeID: other.ID, UserID: 4, WagerAmount: 999})
+
+	participants, err := store.GetParticipants(challenge.ID)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if len(participants) != 3 {
+		t.Fatalf("Expected 3 participants but got %d", len(participants))
+	}
+
+	// Every participant must come back with the exact wager so refunds pay out
+	// the correct amounts.
+	wagers := make(map[int64]int)
+	for _, p := range participants {
+		wagers[p.UserID] = p.WagerAmount
+	}
+
+	want := map[int64]int{1: 50, 2: 75, 3: 100}
+	for userID, amount := range want {
+		if wagers[userID] != amount {
+			t.Errorf("Expected user %d wager %d but got %d", userID, amount, wagers[userID])
+		}
+	}
+
+	// The other challenge's participant must be excluded — refunds must never
+	// leak across challenges.
+	if _, leaked := wagers[4]; leaked {
+		t.Error("GetParticipants returned a participant from another challenge")
+	}
+}
+
+func TestGetParticipants_Empty(t *testing.T) {
+	db := setupParticipantTestDB(t)
+	store := NewParticipantStore(db)
+
+	challenge := createTestChallenge(db)
+
+	participants, err := store.GetParticipants(challenge.ID)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if len(participants) != 0 {
+		t.Errorf("Expected 0 participants but got %d", len(participants))
+	}
+}
+
 func TestGetParticipantsByUserIDs(t *testing.T) {
 	db := setupParticipantTestDB(t)
 	store := NewParticipantStore(db)

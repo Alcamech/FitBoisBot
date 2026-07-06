@@ -310,22 +310,28 @@ func (s *BotService) onCancelChallenge(msg *tgbotapi.Message) {
 		return
 	}
 
-	// Can only cancel pending challenges
-	if challenge.Status != constants.ChallengeStatusPending {
-		s.sendHTMLText(chatID, constants.MsgChallengeCannotCancel)
+	// Load participants before cancelling so we know who to refund.
+	participants, err := s.participantStore.GetParticipants(challenge.ID)
+	if err != nil {
+		slog.Error("Failed to load participants for refund", "error", err)
+		s.sendHTMLText(chatID, "Failed to cancel challenge. Please try again.")
 		return
 	}
 
-	// Refund creator's wager to their balance
-	creatorParticipant, err := s.participantStore.GetCreatorParticipant(challenge.ID, userID)
-	if err == nil && creatorParticipant != nil {
-		s.userBalanceStore.IncrementBalance(userID, chatID, creatorParticipant.WagerAmount)
-	}
-
-	// Update status
+	// Flip status to cancelled FIRST so the challenge can never pay out or be
+	// refunded twice. Only after that gate is closed do we move any money.
 	if err := s.challengeStore.UpdateChallengeStatus(challenge.ID, constants.ChallengeStatusCancelled); err != nil {
 		slog.Error("Failed to cancel challenge", "error", err)
 		return
+	}
+
+	// Refund every participant's wager to their spendable balance. A failed
+	// refund is logged (that participant may be under-refunded) rather than
+	// retried, since the cancelled status now prevents a safe re-run.
+	for _, p := range participants {
+		if err := s.userBalanceStore.IncrementBalance(p.UserID, chatID, p.WagerAmount); err != nil {
+			slog.Error("Failed to refund participant", "error", err, "user_id", p.UserID)
+		}
 	}
 
 	s.sendHTMLText(chatID, constants.MsgChallengeCancelled)

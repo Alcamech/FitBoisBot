@@ -56,9 +56,8 @@ const (
 	MsgChallengeActivated          = "Challenge activated! 14 days to compete."
 	MsgChallengeCompleted          = "Challenge completed!"
 	MsgChallengeAutoCompleted      = "Challenge completed after 14 days! Creator: use /completechallenge to award winners."
-	MsgChallengeCancelled          = "Challenge cancelled. Wager refunded."
+	MsgChallengeCancelled          = "Challenge cancelled. All wagers refunded."
 	MsgChallengeAutoCancelled      = "Challenge auto-cancelled - no one joined within 12 hours. Wager refunded."
-	MsgChallengeCannotCancel       = "Cannot cancel - challenge is already active."
 	MsgChallengeAlreadyExists      = "A challenge is already active or pending in this group."
 	MsgChallengeNotFound           = "No challenge found."
 	MsgChallengeInsufficientTokens = "Insufficient tokens for this wager."
@@ -106,7 +105,8 @@ Create fitness challenges with token rewards based on difficulty!
     /s @john @rob @mark 10 (shared score)
 
 • <code>/cancelchallenge</code> or <code>/cc</code>
-  Cancel pending challenge (creator only)
+  Cancel a pending or active challenge (creator only)
+  All participants' wagers are refunded
 
 • <code>/completechallenge</code> or <code>/done</code> [@winner1 @winner2...]
   Complete challenge and award winners (creator only)
